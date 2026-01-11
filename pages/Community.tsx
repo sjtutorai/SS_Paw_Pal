@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Heart, 
   MessageCircle, 
@@ -9,14 +9,14 @@ import {
   Send, 
   MoreHorizontal,
   Smile,
-  MapPin,
   CheckCircle2,
   Camera,
   Loader2,
   Search,
   Filter,
   Calendar as CalendarIcon,
-  X
+  X,
+  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
@@ -33,7 +33,7 @@ import {
 interface Post {
   id: string;
   user: string;
-  avatar: string;
+  avatar: string | null;
   petName: string;
   petType?: string;
   content: string;
@@ -50,8 +50,10 @@ const Community: React.FC = () => {
   const [pet, setPet] = useState<any>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,38 +82,16 @@ const Community: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const filteredPosts = useMemo(() => {
-    let result = [...posts];
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.content.toLowerCase().includes(q) || 
-        p.petName.toLowerCase().includes(q) || 
-        p.user.toLowerCase().includes(q)
-      );
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-
-    if (typeFilter !== 'All') {
-      result = result.filter(p => p.petType === typeFilter);
-    }
-
-    if (dateFilter === 'Oldest') {
-      result.sort((a, b) => {
-        const da = a.createdAt?.toDate?.() || new Date(0);
-        const db = b.createdAt?.toDate?.() || new Date(0);
-        return da - db;
-      });
-    } else {
-      result.sort((a, b) => {
-        const da = a.createdAt?.toDate?.() || new Date(0);
-        const db = b.createdAt?.toDate?.() || new Date(0);
-        return db - da;
-      });
-    }
-
-    return result;
-  }, [posts, searchQuery, typeFilter, dateFilter]);
+  };
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,11 +102,11 @@ const Community: React.FC = () => {
     try {
       await addDoc(collection(db, "posts"), {
         user: user.displayName || 'Pet Parent',
-        avatar: user.photoURL || `https://i.pravatar.cc/150?u=${user.uid}`,
+        avatar: user.photoURL || null,
         petName: pet?.name || 'My Pet',
         petType: pet?.species || 'Unknown',
         content: newPostContent,
-        image: `https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800&sig=${Date.now()}`,
+        image: selectedImage || '',
         likes: 0,
         comments: 0,
         createdAt: serverTimestamp(),
@@ -134,6 +114,7 @@ const Community: React.FC = () => {
       });
 
       setNewPostContent('');
+      setSelectedImage(null);
     } catch (error) {
       console.error("Error creating post:", error);
       alert("Failed to share post.");
@@ -142,29 +123,29 @@ const Community: React.FC = () => {
     }
   };
 
+  const filteredPosts = useMemo(() => {
+    let result = [...posts];
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(p => p.content.toLowerCase().includes(q) || p.petName.toLowerCase().includes(q));
+    }
+    if (typeFilter !== 'All') result = result.filter(p => p.petType === typeFilter);
+    return result;
+  }, [posts, searchQuery, typeFilter]);
+
   const formatTime = (createdAt: any) => {
     if (!createdAt) return 'Just now';
     const date = createdAt instanceof Timestamp ? createdAt.toDate() : new Date(createdAt);
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return date.toLocaleDateString();
   };
 
   return (
     <div className="max-w-3xl mx-auto space-y-10 pb-32 animate-fade-in">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Community Feed</h2>
-          <p className="text-slate-500 font-medium">Shared by pet parents globally.</p>
-        </div>
+      <div>
+        <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Community Feed</h2>
+        <p className="text-slate-500 font-medium">Shared by pet parents globally.</p>
       </div>
 
-      {/* Search and Filters */}
       <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
         <div className="relative">
           <Search size={20} className="absolute left-5 top-4 text-slate-400" />
@@ -172,156 +153,100 @@ const Community: React.FC = () => {
             type="text" 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search keywords, pet names..." 
+            placeholder="Search moments..." 
             className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3.5 pl-14 pr-12 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all" 
           />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-5 top-4 text-slate-400 hover:text-indigo-600 transition-colors">
-              <X size={18} />
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
-            <Filter size={14} className="text-slate-400" />
-            <select 
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              className="bg-transparent text-xs font-black text-slate-600 uppercase tracking-widest outline-none"
-            >
-              <option value="All">All Species</option>
-              <option value="Dog">Dogs</option>
-              <option value="Cat">Cats</option>
-              <option value="Bird">Birds</option>
-              <option value="Rabbit">Rabbits</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
-            <CalendarIcon size={14} className="text-slate-400" />
-            <select 
-              value={dateFilter}
-              onChange={e => setDateFilter(e.target.value)}
-              className="bg-transparent text-xs font-black text-slate-600 uppercase tracking-widest outline-none"
-            >
-              <option value="Newest">Newest First</option>
-              <option value="Oldest">Oldest First</option>
-            </select>
-          </div>
         </div>
       </div>
 
-      {/* Post Composer */}
-      <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-sm space-y-6 transition-all focus-within:shadow-xl focus-within:shadow-indigo-50/50">
+      <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-sm space-y-6">
         <div className="flex gap-4">
-          <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 shadow-md">
-            <img src={user?.photoURL || `https://i.pravatar.cc/150?u=${user?.uid}`} alt="Me" className="w-full h-full object-cover" />
+          <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center">
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="Me" className="w-full h-full object-cover" />
+            ) : (
+              <UserIcon size={24} className="text-slate-400" />
+            )}
           </div>
           <textarea
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
-            placeholder={`What's ${pet?.name || 'your pet'} up to today?`}
-            className="flex-1 bg-slate-50 border border-slate-50 rounded-[2rem] p-5 font-medium text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all resize-none min-h-[120px]"
+            placeholder={`What's ${pet?.name || 'your pet'} up to?`}
+            className="flex-1 bg-slate-50 border border-slate-50 rounded-[2rem] p-5 text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all resize-none min-h-[100px]"
           />
         </div>
+
+        {selectedImage && (
+          <div className="relative w-32 h-32 rounded-2xl overflow-hidden group ml-16">
+            <img src={selectedImage} alt="Selected" className="w-full h-full object-cover" />
+            <button onClick={() => setSelectedImage(null)} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+              <X size={24} />
+            </button>
+          </div>
+        )}
         
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center gap-2">
-            <button className="p-3 text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-widest">
+            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageSelect} />
+            <button onClick={() => fileInputRef.current?.click()} className="p-3 text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-widest">
               <ImageIcon size={18} />
               Photo
             </button>
-            <button className="p-3 text-slate-400 hover:bg-slate-50 rounded-2xl transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-widest">
-              <Smile size={18} />
-            </button>
           </div>
           
-          <button 
-            onClick={handleCreatePost}
-            disabled={!newPostContent.trim() || isPosting}
-            className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95 disabled:opacity-50"
-          >
+          <button onClick={handleCreatePost} disabled={!newPostContent.trim() || isPosting} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50">
             {isPosting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-            {isPosting ? 'Sharing...' : 'Share Moment'}
+            Share
           </button>
         </div>
       </div>
 
-      {/* Feed */}
       <div className="space-y-10">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
-            <Loader2 size={40} className="animate-spin text-indigo-600" />
-            <p className="font-bold uppercase tracking-[0.2em] text-xs">Loading Shared Moments...</p>
-          </div>
+          <div className="py-20 text-center text-slate-400">Loading moments...</div>
         ) : filteredPosts.length === 0 ? (
           <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-100">
             <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
               <Camera size={32} />
             </div>
             <h3 className="text-2xl font-black text-slate-900 mb-2">No moments found</h3>
-            <p className="text-slate-500 font-medium">Try adjusting your filters or search keywords.</p>
+            <p className="text-slate-500">Share your first memory!</p>
           </div>
         ) : filteredPosts.map((post) => (
-          <article key={post.id} className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden group hover:shadow-2xl hover:shadow-indigo-50 transition-all duration-500">
-            {/* Post Header */}
+          <article key={post.id} className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden group">
             <div className="p-8 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg border-2 border-white">
-                  <img src={post.avatar} alt={post.user} className="w-full h-full object-cover" />
+                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center border">
+                  {post.avatar ? (
+                    <img src={post.avatar} alt={post.user} className="w-full h-full object-cover" />
+                  ) : (
+                    <UserIcon size={20} className="text-slate-400" />
+                  )}
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="font-black text-slate-800">{post.user}</h4>
-                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                    <span className="text-indigo-600 font-bold">{post.petName}</span>
-                    <span className="px-2 py-0.5 bg-slate-50 text-[10px] font-black text-slate-400 rounded-md uppercase tracking-widest">{post.petType}</span>
-                    {post.userId === user?.uid && <CheckCircle2 size={14} className="text-emerald-500" />}
-                  </div>
+                  <h4 className="font-black text-slate-800">{post.user} <span className="text-indigo-600 font-bold ml-1">{post.petName}</span></h4>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{formatTime(post.createdAt)}</p>
                 </div>
               </div>
-              <button className="text-slate-300 hover:text-slate-600 transition-colors">
-                <MoreHorizontal size={20} />
-              </button>
             </div>
 
-            {/* Post Content */}
-            <div className="px-8 pb-6">
-              <p className="text-slate-700 font-medium leading-relaxed text-lg">{post.content}</p>
+            <div className="px-8 pb-6 text-slate-700 font-medium text-lg leading-relaxed">
+              {post.content}
             </div>
 
-            {/* Post Image */}
-            <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden cursor-pointer">
-              <img 
-                src={post.image} 
-                alt="Post" 
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-              />
-              <div className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera size={20} />
+            {post.image && (
+              <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+                <img src={post.image} alt="Moment" className="w-full h-full object-cover" />
               </div>
-            </div>
+            )}
 
-            {/* Post Footer / Actions */}
             <div className="p-8 flex items-center justify-between border-t border-slate-50">
               <div className="flex items-center gap-6">
-                <button className="flex items-center gap-2 font-black text-sm text-slate-500 hover:text-rose-500 transition-all group/btn">
-                  <div className="p-2.5 rounded-xl bg-slate-50 group-hover/btn:bg-rose-50 group-hover/btn:text-rose-500 transition-all">
-                    <Heart size={20} className={post.likes > 100 ? 'fill-rose-500 text-rose-500' : ''} />
-                  </div>
+                <button className="flex items-center gap-2 font-black text-sm text-slate-500 hover:text-rose-500 transition-all">
+                  <div className="p-2.5 rounded-xl bg-slate-50"><Heart size={20} /></div>
                   {post.likes}
                 </button>
-                <button className="flex items-center gap-2 font-black text-sm text-slate-500 hover:text-indigo-600 transition-all group/btn">
-                  <div className="p-2.5 rounded-xl bg-slate-50 group-hover/btn:bg-indigo-50 group-hover/btn:text-indigo-600 transition-all">
-                    <MessageCircle size={20} />
-                  </div>
-                  {post.comments}
-                </button>
               </div>
-              
-              <button className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all">
-                <Share2 size={20} />
-              </button>
             </div>
           </article>
         ))}

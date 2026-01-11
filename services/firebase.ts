@@ -11,9 +11,8 @@ import {
   updateProfile,
   User as FirebaseUser 
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDocs, collection, query, where, limit } from "firebase/firestore";
 
-// Updated Firebase configuration from user input
 const firebaseConfig = {
   apiKey: "AIzaSyCVUMhFhDzfbvF-iXthH6StOlI6mJreTmA",
   authDomain: "smart-support-for-pets.firebaseapp.com",
@@ -23,7 +22,6 @@ const firebaseConfig = {
   appId: "1:737739952686:web:17ecad5079401fb6ee05bf"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
@@ -32,6 +30,12 @@ const googleProvider = new GoogleAuthProvider();
 export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    // Sync user to firestore
+    await setDoc(doc(db, "users", result.user.uid), {
+      username: result.user.displayName?.toLowerCase().replace(/\s/g, '') || result.user.uid,
+      email: result.user.email,
+      displayName: result.user.displayName
+    }, { merge: true });
     return result.user;
   } catch (error: any) {
     console.error("Google login failed:", error);
@@ -39,24 +43,47 @@ export const loginWithGoogle = async () => {
   }
 };
 
-export const loginWithEmail = async (email: string, pass: string) => {
+export const loginWithIdentifier = async (identifier: string, pass: string) => {
   try {
+    let email = identifier;
+    // Check if identifier is a username (doesn't contain @)
+    if (!identifier.includes('@')) {
+      const q = query(collection(db, "users"), where("username", "==", identifier.toLowerCase()), limit(1));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        throw new Error("Username not found.");
+      }
+      email = querySnapshot.docs[0].data().email;
+    }
     const result = await signInWithEmailAndPassword(auth, email, pass);
     return result.user;
   } catch (error: any) {
-    console.error("Email login failed:", error);
+    console.error("Login failed:", error);
     throw error;
   }
 };
 
-export const signUpWithEmail = async (email: string, pass: string, displayName: string) => {
+export const signUpWithEmail = async (email: string, pass: string, displayName: string, username: string) => {
   try {
+    // 1. Check if username exists
+    const q = query(collection(db, "users"), where("username", "==", username.toLowerCase()), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      throw new Error("Username already taken.");
+    }
+
     const result = await createUserWithEmailAndPassword(auth, email, pass);
-    // Explicitly update the profile
     await updateProfile(result.user, { displayName });
-    // IMPORTANT: Force a reload of the user object to get the updated profile data immediately
+    
+    // 2. Store user in Firestore
+    await setDoc(doc(db, "users", result.user.uid), {
+      username: username.toLowerCase(),
+      email: email,
+      displayName: displayName,
+      createdAt: new Date().toISOString()
+    });
+
     await result.user.reload();
-    // Return the freshest user object from the auth instance
     return auth.currentUser;
   } catch (error: any) {
     console.error("Sign up failed:", error);
