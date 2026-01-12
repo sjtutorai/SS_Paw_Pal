@@ -41,6 +41,32 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+/**
+ * Force-saves user data to Firestore. 
+ * Essential to call this on every login/signup to prevent "missing document" errors later.
+ */
+export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
+  const userRef = doc(db, "users", user.uid);
+  const data = {
+    uid: user.uid,
+    email: user.email,
+    displayName: extraData.displayName || user.displayName || 'Pet Parent',
+    photoURL: user.photoURL || null,
+    username: extraData.username || user.displayName?.toLowerCase().replace(/\s/g, '') || user.uid.slice(0, 8),
+    lastLogin: new Date().toISOString(),
+    ...extraData
+  };
+  
+  try {
+    await setDoc(userRef, data, { merge: true });
+    return data;
+  } catch (err) {
+    console.error("Firestore sync failed:", err);
+    // Even if firestore fails, we return the data object for local UI state
+    return data;
+  }
+};
+
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -48,19 +74,11 @@ export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, provider);
     if (result.user) {
-      const userRef = doc(db, "users", result.user.uid);
-      // Initialize or update user profile
-      await setDoc(userRef, {
-        username: result.user.displayName?.toLowerCase().replace(/\s/g, '') || result.user.uid,
-        email: result.user.email,
-        displayName: result.user.displayName,
-        photoURL: result.user.photoURL,
-        lastLogin: new Date().toISOString()
-      }, { merge: true });
+      await syncUserToDb(result.user);
       return result.user;
     }
   } catch (error: any) {
-    console.error("Google Auth Error:", error.code, error.message);
+    console.error("Google login error:", error.code, error.message);
     throw error;
   }
 };
@@ -72,11 +90,12 @@ export const loginWithIdentifier = async (identifier: string, pass: string) => {
       const q = query(collection(db, "users"), where("username", "==", identifier.toLowerCase()), limit(1));
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) {
-        throw new Error("Username not found. Please try your email address.");
+        throw new Error("Username not found. Try your email address.");
       }
       email = querySnapshot.docs[0].data().email;
     }
     const result = await signInWithEmailAndPassword(auth, email, pass);
+    if (result.user) await syncUserToDb(result.user);
     return result.user;
   } catch (error: any) {
     console.error("Login error:", error.code, error.message);
@@ -89,19 +108,10 @@ export const signUpWithEmail = async (email: string, pass: string, fullName: str
     const result = await createUserWithEmailAndPassword(auth, email, pass);
     if (result.user) {
       await updateProfile(result.user, { displayName: fullName });
-      
-      const userRef = doc(db, "users", result.user.uid);
-      await setDoc(userRef, {
-        username: username.toLowerCase().replace(/\s/g, ''),
-        email: email,
-        displayName: fullName,
-        photoURL: null,
-        lastLogin: new Date().toISOString()
-      }, { merge: true });
-      
+      await syncUserToDb(result.user, { displayName: fullName, username: username.toLowerCase() });
       return result.user;
     }
-    throw new Error("Failed to create account.");
+    throw new Error("Failed to create user session.");
   } catch (error: any) {
     console.error("Signup error:", error.code, error.message);
     throw error;
@@ -110,29 +120,22 @@ export const signUpWithEmail = async (email: string, pass: string, fullName: str
 
 export const updateUserProfile = async (uid: string, data: { displayName?: string, username?: string, phoneNumber?: string }) => {
   const user = auth.currentUser;
-  if (!user) throw new Error("Authentication lost. Please sign in again.");
+  if (!user) throw new Error("No active session found.");
 
   const userRef = doc(db, "users", uid);
-  const updatePayload: any = { ...data };
-  
-  // Sanitize username
-  if (data.username) {
-    updatePayload.username = data.username.toLowerCase().replace(/\s/g, '');
-  }
+  const firestoreData: any = { ...data };
+  if (data.username) firestoreData.username = data.username.toLowerCase().replace(/\s/g, '');
   
   try {
-    // We use setDoc with merge: true to ensure it works even if the user doc was never created
-    await setDoc(userRef, updatePayload, { merge: true });
-    
+    await setDoc(userRef, firestoreData, { merge: true });
     if (data.displayName) {
       await updateProfile(user, { displayName: data.displayName });
     }
-    
     await user.reload();
     return auth.currentUser;
-  } catch (error: any) {
-    console.error("Profile Update Failure:", error);
-    throw new Error(error.message || "Database write failed. Check your connection.");
+  } catch (err: any) {
+    console.error("Profile update failed:", err);
+    throw new Error(err.message || "Unable to save profile to database.");
   }
 };
 

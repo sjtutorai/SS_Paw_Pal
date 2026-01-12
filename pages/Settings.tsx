@@ -41,9 +41,9 @@ const Settings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('ssp_theme_color') || '#4f46e5');
   
-  // Form State
+  // Form State initialized with Auth data as fallback
   const [editData, setEditData] = useState({
-    displayName: '',
+    displayName: user?.displayName || '',
     username: '',
     phoneNumber: ''
   });
@@ -62,6 +62,13 @@ const Settings: React.FC = () => {
               username: data.username || '',
               phoneNumber: data.phoneNumber || ''
             });
+          } else {
+            // Initializing if DB record is missing
+            setEditData(prev => ({
+              ...prev,
+              displayName: user.displayName || '',
+              username: user.displayName?.toLowerCase().replace(/\s/g, '') || user.uid.slice(0, 8)
+            }));
           }
         } catch (e) {
           console.error("Error fetching user settings:", e);
@@ -99,15 +106,12 @@ const Settings: React.FC = () => {
       
       setSaveStatus({ message: 'Profile updated successfully!', type: 'success' });
       setIsEditing(false);
-      addNotification('Profile Updated', 'Success! Your profile data is safe.', 'success');
+      addNotification('Profile Updated', 'Your identity has been saved.', 'success');
     } catch (error: any) {
       console.error("Profile update failed:", error);
-      setSaveStatus({ message: error.message || 'Save failed. Check network.', type: 'error' });
+      setSaveStatus({ message: error.message || 'Failed to save. Check your connection.', type: 'error' });
     } finally {
       setIsSaving(false);
-      if (!saveStatus || saveStatus.type === 'success') {
-        setTimeout(() => setSaveStatus(null), 3000);
-      }
     }
   };
 
@@ -131,7 +135,7 @@ const Settings: React.FC = () => {
 
       <div className="space-y-10">
         {/* Main Content Area - Visual Match for User Screenshot */}
-        <div className="bg-white rounded-[4rem] p-10 md:p-20 border border-slate-50 shadow-2xl space-y-16 relative overflow-hidden">
+        <div className="bg-white rounded-[4rem] p-10 md:p-20 border border-slate-50 shadow-2xl space-y-16 relative overflow-hidden transition-all duration-700">
           <div className="flex flex-col md:flex-row items-center justify-center md:items-center gap-16 md:gap-24">
             
             {/* Avatar Squircle with Soft Glow */}
@@ -153,7 +157,7 @@ const Settings: React.FC = () => {
                   onClick={() => setIsEditing(true)}
                   className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white px-6 py-2.5 rounded-full shadow-xl border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-theme transition-all whitespace-nowrap"
                 >
-                  Edit Profile
+                  Edit Identity
                 </button>
               )}
             </div>
@@ -185,7 +189,7 @@ const Settings: React.FC = () => {
                     <input 
                       readOnly={!isEditing}
                       value={isEditing ? editData.username : (dbUser?.username || '')}
-                      onChange={(e) => setEditData({...editData, username: e.target.value})}
+                      onChange={(e) => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})}
                       placeholder="username"
                       className={`w-full p-6 pl-14 rounded-[1.5rem] text-lg font-bold text-slate-800 outline-none transition-all ${
                         isEditing ? 'bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 ring-theme/10' : 'bg-slate-50/50 border-transparent cursor-default'
@@ -220,7 +224,7 @@ const Settings: React.FC = () => {
                   <button 
                     onClick={handleSaveProfile}
                     disabled={isSaving}
-                    className="flex-[2] bg-theme text-white py-6 rounded-[1.5rem] font-black text-xl bg-theme-hover transition-all shadow-[0_20px_40px_-10px_rgba(var(--theme-color-rgb),0.3)] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+                    className="flex-[2] bg-theme text-white py-6 rounded-[1.5rem] font-black text-xl bg-theme-hover transition-all shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
                   >
                     {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
                     {isSaving ? 'Updating...' : 'Save Changes'}
@@ -241,12 +245,12 @@ const Settings: React.FC = () => {
         {/* Theme Personalization Section */}
         <div className="bg-white rounded-[3.5rem] p-10 md:p-14 border border-slate-100 shadow-sm space-y-10">
           <div className="flex items-center gap-5">
-            <div className="p-4 bg-theme-light text-theme rounded-[2rem] transition-theme">
+            <div className="p-4 bg-theme-light text-theme rounded-[2rem] transition-theme shadow-sm">
               <Palette size={28} />
             </div>
             <div>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">App Personalization</h3>
-              <p className="text-slate-500 font-medium">Choose a theme color that reflects your style.</p>
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">App Aesthetics</h3>
+              <p className="text-slate-500 font-medium">Customize the primary visual theme of your workspace.</p>
             </div>
           </div>
 

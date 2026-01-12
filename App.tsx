@@ -109,6 +109,7 @@ const PetProfilePage: React.FC = () => {
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   
   const [newWeight, setNewWeight] = useState('');
   const [newVaccine, setNewVaccine] = useState({ name: '', date: '', nextDueDate: '' });
@@ -123,6 +124,54 @@ const PetProfilePage: React.FC = () => {
       }
     }
   }, [user]);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let scannerInterval: any = null;
+
+    const startScanner = async () => {
+      if (isScanning && videoRef.current) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          videoRef.current.srcObject = stream;
+          
+          // Check for native BarcodeDetector API (Chrome/Edge/Android)
+          if ('BarcodeDetector' in window) {
+            const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+            scannerInterval = setInterval(async () => {
+              if (videoRef.current) {
+                try {
+                  const barcodes = await barcodeDetector.detect(videoRef.current);
+                  if (barcodes.length > 0) {
+                    const data = barcodes[0].rawValue;
+                    if (data.startsWith('ssp_pet_')) {
+                      const id = data.replace('ssp_pet_', '');
+                      const found = pets.find(p => p.id === id);
+                      if (found) {
+                        setSelectedPet(found);
+                        setIsScanning(false);
+                        clearInterval(scannerInterval);
+                      }
+                    }
+                  }
+                } catch (e) {
+                  // Silent fail for single frame detection errors
+                }
+              }
+            }, 500);
+          }
+        } catch (err) {
+          console.error("Camera access denied:", err);
+        }
+      }
+    };
+
+    if (isScanning) startScanner();
+    return () => {
+      if (stream) stream.getTracks().forEach(track => track.stop());
+      if (scannerInterval) clearInterval(scannerInterval);
+    };
+  }, [isScanning, pets]);
 
   const savePetsToStorage = (updatedPets: PetProfile[]) => {
     localStorage.setItem(`ssp_pets_${user?.uid}`, JSON.stringify(updatedPets));
@@ -241,16 +290,28 @@ const PetProfilePage: React.FC = () => {
 
   if (isScanning) {
     return (
-      <div className="max-w-2xl mx-auto py-24 text-center animate-fade-in">
-        <div className="bg-slate-900 text-white rounded-[3.5rem] p-12 shadow-2xl relative overflow-hidden">
-          <button onClick={() => setIsScanning(false)} className="absolute top-8 right-8 text-white/40 hover:text-white"><X size={32} /></button>
-          <div className="w-64 h-64 border-2 border-theme rounded-3xl mx-auto mb-10 flex items-center justify-center relative">
-            <div className="absolute inset-0 bg-theme/10 animate-pulse"></div>
-            <Scan size={80} className="text-theme" />
-            <div className="absolute top-0 left-0 w-full h-1 bg-theme animate-[scan_2s_infinite]"></div>
+      <div className="max-w-4xl mx-auto py-12 text-center animate-fade-in px-4">
+        <div className="bg-slate-900 text-white rounded-[4rem] p-10 md:p-20 shadow-2xl relative overflow-hidden border border-slate-800">
+          <button onClick={() => setIsScanning(false)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors"><X size={40} /></button>
+          
+          <div className="w-full aspect-square max-w-[400px] border-4 border-theme rounded-[3rem] mx-auto mb-10 flex items-center justify-center relative overflow-hidden shadow-[0_0_100px_rgba(var(--theme-color-rgb),0.3)] bg-black">
+            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            <div className="absolute inset-0 pointer-events-none border-[40px] border-black/40"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-theme shadow-[0_0_20px_var(--theme-color)] animate-[scan_2s_infinite]"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              {(!('BarcodeDetector' in window)) && (
+                <div className="bg-black/60 backdrop-blur-md p-6 rounded-2xl mx-6">
+                  <AlertCircle className="mx-auto text-amber-500 mb-3" size={32} />
+                  <p className="text-sm font-bold">Scanning not supported in this browser. Please use Chrome/Edge on Mobile.</p>
+                </div>
+              )}
+            </div>
           </div>
-          <h3 className="text-2xl font-black mb-4">Scanner Ready</h3>
-          <p className="text-slate-400 font-medium max-w-sm mx-auto">Position your pet's SSP-ID QR code within the frame to identify them instantly.</p>
+
+          <div className="space-y-4 max-w-sm mx-auto">
+            <h3 className="text-3xl font-black tracking-tight">Scanner Active</h3>
+            <p className="text-slate-400 font-medium">Position the pet's unique SSP-ID QR code within the frame to identify them.</p>
+          </div>
         </div>
       </div>
     );
@@ -264,7 +325,7 @@ const PetProfilePage: React.FC = () => {
           <p className="text-slate-500 font-medium">Manage and identify your registered companions.</p>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => setIsScanning(false)} className="flex items-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
+          <button onClick={() => setIsScanning(true)} className="flex items-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
             <Scan size={20} className="text-theme" /> Scan QR
           </button>
           <button onClick={() => { setStep(1); setIsAdding(true); }} className="flex items-center gap-3 px-8 py-4 bg-theme text-white rounded-2xl font-black text-sm uppercase tracking-widest bg-theme-hover transition-all shadow-xl shadow-theme/10">
@@ -343,7 +404,6 @@ const PetProfilePage: React.FC = () => {
       ) : selectedPet ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-1 space-y-8">
-            {/* Pet Card Refined UI */}
             <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-2 bg-theme"></div>
               <div className="flex flex-col items-center text-center space-y-6">
@@ -493,17 +553,12 @@ const AppContent: React.FC = () => {
       const savedTheme = localStorage.getItem('ssp_theme_color') || '#4f46e5';
       const root = document.documentElement;
       
-      // Calculate a darker hover shade (simplified hex calculation)
-      // This is a basic approach; a robust one would convert to HSL and adjust L.
-      const hoverColor = savedTheme; // For simplicity we can use the same or a fixed variance
-      
       root.style.setProperty('--theme-color', savedTheme);
-      root.style.setProperty('--theme-color-hover', savedTheme + 'dd'); // slight opacity for hover
-      root.style.setProperty('--theme-color-light', savedTheme + '15'); // very transparent for background
+      root.style.setProperty('--theme-color-hover', savedTheme + 'dd'); 
+      root.style.setProperty('--theme-color-light', savedTheme + '15');
     };
 
     applyTheme();
-    // Re-apply if user changes it in settings (custom event or just polling)
     const interval = setInterval(applyTheme, 500);
     return () => clearInterval(interval);
   }, []);
