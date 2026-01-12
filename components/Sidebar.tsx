@@ -78,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Sidebar Container - Modified to use 20% width on large screens */}
+      {/* Sidebar Container */}
       <aside className={`
         fixed inset-y-0 left-0 z-[70] bg-white/80 backdrop-blur-2xl border-r border-slate-200/50 
         transform transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
@@ -94,8 +94,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
             to={AppRoutes.HOME}
             className={`flex items-center gap-4 transition-all duration-500 ${isCollapsed && !isOpen ? 'justify-center w-full' : ''}`}
           >
-            <div className="w-12 h-12 bg-theme rounded-2xl p-1.5 shadow-lg shadow-theme/20 flex-shrink-0 flex items-center justify-center transition-transform hover:rotate-6 active:scale-90">
-              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain brightness-0 invert" />
+            <div className="w-12 h-12 bg-white rounded-2xl p-1 shadow-lg flex-shrink-0 flex items-center justify-center transition-transform hover:rotate-6 active:scale-90 border border-slate-100">
+              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
             </div>
             {(!isCollapsed || isOpen) && (
               <div className="overflow-hidden animate-in fade-in slide-in-from-left-2">
@@ -144,7 +144,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                       {(!isCollapsed || isOpen) ? (
                         <span className="text-sm font-bold tracking-tight whitespace-nowrap">{item.label}</span>
                       ) : (
-                        /* Tooltip for Collapsed Mode */
                         <div className="absolute left-full ml-4 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-all z-[100] translate-x-[-10px] group-hover:translate-x-0 whitespace-nowrap shadow-xl">
                           {item.label}
                           <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />

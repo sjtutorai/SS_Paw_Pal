@@ -126,18 +126,20 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="space-y-10">
-        {/* Main Card - Visual Match for User Screenshot */}
         <div className="bg-white rounded-[4rem] p-10 md:p-20 border border-slate-50 shadow-2xl space-y-16 relative overflow-hidden transition-all duration-700">
           <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start gap-16 lg:gap-24">
             
-            {/* Avatar Squircle */}
+            {/* Avatar Area */}
             <div className="relative group shrink-0">
-              <div className="w-56 h-56 rounded-[3.5rem] bg-theme-light flex items-center justify-center overflow-hidden border-4 border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 group-hover:scale-105">
+              <div className="w-56 h-56 rounded-[3.5rem] bg-theme-light flex flex-col items-center justify-center overflow-hidden border-4 border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 group-hover:scale-105">
                 {user?.photoURL ? (
                   <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <UserIcon size={96} className="text-theme opacity-20" />
                 )}
+                <div className="mt-2 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-theme/60">@{dbUser?.username || 'user'}</p>
+                </div>
                 {isEditing && (
                   <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                     <Edit3 size={32} className="text-white" />
@@ -171,7 +173,7 @@ const Settings: React.FC = () => {
                   />
                 </div>
 
-                {/* Unique Handle */}
+                {/* Unique Handle (Editable) */}
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Unique Handle</label>
                   <div className="relative">
@@ -182,7 +184,7 @@ const Settings: React.FC = () => {
                       readOnly={!isEditing}
                       value={isEditing ? editData.username : (dbUser?.username || '')}
                       onChange={(e) => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})}
-                      placeholder="ssj@2011"
+                      placeholder="username"
                       className={`w-full p-6 pl-14 rounded-[1.5rem] text-lg font-bold text-slate-800 outline-none transition-all ${
                         isEditing ? 'bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 ring-theme/10' : 'bg-slate-50/50 border-transparent cursor-default'
                       }`}
@@ -190,9 +192,9 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Phone Number - Accepts any format e.g. +91 */}
+                {/* Phone Number - Enhanced Placeholder & Handling */}
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Phone Number (Public Context)</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Phone Number</label>
                   <div className="relative">
                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400">
                       <Phone size={20} />
@@ -201,7 +203,7 @@ const Settings: React.FC = () => {
                       readOnly={!isEditing}
                       value={isEditing ? editData.phoneNumber : (dbUser?.phoneNumber || '')}
                       onChange={(e) => setEditData({...editData, phoneNumber: e.target.value})}
-                      placeholder="+91 8105423488"
+                      placeholder="e.g. +91 9876543210"
                       className={`w-full p-6 pl-14 rounded-[1.5rem] text-lg font-bold text-slate-800 outline-none transition-all ${
                         isEditing ? 'bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 ring-theme/10' : 'bg-slate-50/50 border-transparent cursor-default'
                       }`}
@@ -216,7 +218,7 @@ const Settings: React.FC = () => {
                   <button 
                     onClick={handleSaveProfile}
                     disabled={isSaving}
-                    className="flex-[2] bg-theme text-white py-6 rounded-full font-black text-xl bg-theme-hover transition-all shadow-[0_20px_40px_-10px_rgba(var(--theme-color-rgb),0.3)] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+                    className="flex-[2] bg-theme text-white py-6 rounded-full font-black text-xl bg-theme-hover transition-all shadow-[0_20px_40px_-10px_rgba(79,70,229,0.3)] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
                   >
                     {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
                     {isSaving ? 'Saving...' : 'Save Changes'}

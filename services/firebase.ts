@@ -42,8 +42,23 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 /**
+ * Checks if a username is already taken by a different user.
+ */
+export const isUsernameTaken = async (username: string, excludeUid: string) => {
+  const q = query(
+    collection(db, "users"), 
+    where("username", "==", username.toLowerCase().trim()), 
+    limit(1)
+  );
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) return false;
+  
+  // Taken if the existing document belongs to a different UID
+  return querySnapshot.docs[0].id !== excludeUid;
+};
+
+/**
  * Force-saves user data to Firestore. 
- * Essential to call this on every login/signup to prevent "missing document" errors later.
  */
 export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
   const userRef = doc(db, "users", user.uid);
@@ -104,6 +119,10 @@ export const loginWithIdentifier = async (identifier: string, pass: string) => {
 
 export const signUpWithEmail = async (email: string, pass: string, fullName: string, username: string) => {
   try {
+    // Check username availability first
+    const taken = await isUsernameTaken(username, "new_user");
+    if (taken) throw new Error("This username is already claimed.");
+
     const result = await createUserWithEmailAndPassword(auth, email, pass);
     if (result.user) {
       await updateProfile(result.user, { displayName: fullName });
@@ -123,10 +142,14 @@ export const updateUserProfile = async (uid: string, data: { displayName?: strin
 
   const userRef = doc(db, "users", uid);
   const firestoreData: any = { ...data };
-  if (data.username) firestoreData.username = data.username.toLowerCase().replace(/\s/g, '');
+  if (data.username) {
+    const cleanedUsername = data.username.toLowerCase().replace(/\s/g, '');
+    const taken = await isUsernameTaken(cleanedUsername, uid);
+    if (taken) throw new Error("That username is already taken by another pet parent.");
+    firestoreData.username = cleanedUsername;
+  }
   
   try {
-    // Crucial: setDoc with merge: true ensures document exists and avoids update errors.
     await setDoc(userRef, firestoreData, { merge: true });
     if (data.displayName) {
       await updateProfile(user, { displayName: data.displayName });
@@ -135,18 +158,12 @@ export const updateUserProfile = async (uid: string, data: { displayName?: strin
     return auth.currentUser;
   } catch (err: any) {
     console.error("Profile update failed:", err);
-    throw new Error(err.message || "Unable to save profile to database.");
+    throw err;
   }
 };
 
-/**
- * Starts a new chat session or returns an existing one between two users.
- * Used for direct messaging in the community feed.
- */
 export const startChat = async (currentUserId: string, targetUserId: string) => {
   const chatsRef = collection(db, "chats");
-  
-  // Check if a chat session between these two users already exists
   const q = query(chatsRef, where("participants", "array-contains", currentUserId));
   const querySnapshot = await getDocs(q);
   
@@ -160,7 +177,6 @@ export const startChat = async (currentUserId: string, targetUserId: string) => 
 
   if (existingChatId) return existingChatId;
 
-  // Create a new chat session if none exists
   const newChatDoc = await addDoc(chatsRef, {
     participants: [currentUserId, targetUserId],
     lastMessage: "",
@@ -170,21 +186,16 @@ export const startChat = async (currentUserId: string, targetUserId: string) => 
   return newChatDoc.id;
 };
 
-/**
- * Sends a message within a chat session and updates the session's last message preview.
- */
 export const sendChatMessage = async (chatId: string, senderId: string, text: string) => {
   const chatRef = doc(db, "chats", chatId);
   const messagesRef = collection(db, "chats", chatId, "messages");
 
-  // Add the message to the messages subcollection
   await addDoc(messagesRef, {
     senderId,
     text,
     timestamp: serverTimestamp()
   });
 
-  // Update the parent chat document for sorting the messages list
   await updateDoc(chatRef, {
     lastMessage: text,
     lastTimestamp: serverTimestamp()

@@ -1,6 +1,5 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-// Corrected the import: 'AlertCircleTriangle' is not a valid export, it should be 'AlertTriangle'
 import { Menu, Bell, User as UserIcon, Trash2, CheckCircle2, AlertTriangle, Info, X, Search, Settings as SettingsIcon, Dog, Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -55,7 +54,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Sync breadcrumbs based on route
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === AppRoutes.HOME) return "Dashboard";
@@ -74,7 +72,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen} 
         isCollapsed={isSidebarCollapsed}
-        /* Fix: Use setIsSidebarCollapsed instead of setIsCollapsed */
         setIsCollapsed={setIsSidebarCollapsed}
       />
 
@@ -94,14 +91,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
 
             <Link to={AppRoutes.HOME} className="flex items-center gap-3 md:hidden active:scale-95 transition-transform">
-              <div className="w-10 h-10 bg-theme rounded-xl p-2 flex items-center justify-center shadow-lg shadow-theme/20">
-                <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain brightness-0 invert" />
+              <div className="w-10 h-10 bg-white rounded-xl p-1 flex items-center justify-center shadow-lg border border-slate-100">
+                <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
               </div>
             </Link>
           </div>
 
           <div className="flex items-center gap-4 md:gap-8">
-            {/* Global Search */}
             <div className="hidden lg:flex items-center relative group">
               <Search size={18} className="absolute left-4 text-slate-400 group-focus-within:text-theme transition-colors" />
               <input 
@@ -190,13 +186,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
         </header>
 
-        {/* Updated main area to allow 80% content width with horizontal centering */}
         <main className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
           <div className="max-w-none lg:max-w-[80vw] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
             {children}
           </div>
           
-          {/* Subtle footer */}
           <footer className="mt-20 py-10 border-t border-slate-100 text-center">
              <div className="flex items-center justify-center gap-2 text-slate-300 font-black text-[10px] uppercase tracking-[0.4em]">
                <Dog size={12} /> Smart Support for Pets <Sparkles size={12} />

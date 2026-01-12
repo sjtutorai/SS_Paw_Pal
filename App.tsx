@@ -30,14 +30,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <Layout>{children}</Layout>;
 };
 
-// Extracted from system rules - mandatory checks for high-quality models
-// Fix: Use readonly and inline definition to avoid declaration merging conflicts with potential global AIStudio types
+// Fixed: Corrected global declaration for aistudio to resolve type mismatch and modifier errors.
+// Using a named interface that matches the expected global type name 'AIStudio'.
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
   interface Window {
-    readonly aistudio: {
-      hasSelectedApiKey: () => Promise<boolean>;
-      openSelectKey: () => Promise<void>;
-    };
+    aistudio: AIStudio;
   }
 }
 
@@ -179,7 +180,6 @@ const PetProfilePage: React.FC = () => {
   const generateAIAvatar = async () => {
     if (!selectedPet) return;
     
-    // Check for required API Key selection for high-quality models
     const hasKey = await window.aistudio.hasSelectedApiKey();
     if (!hasKey) {
       setShowKeyRequirement(true);
@@ -204,7 +204,8 @@ const PetProfilePage: React.FC = () => {
 
       const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
       if (part?.inlineData) {
-        const avatarUrl = `data:image/png;base64,${part.inlineData.data}`;
+        const base64EncodeString: string = part.inlineData.data;
+        const avatarUrl = `data:image/png;base64,${base64EncodeString}`;
         const updatedPets = pets.map(p => p.id === selectedPet.id ? { ...p, avatarUrl } : p);
         savePetsToStorage(updatedPets);
         setSelectedPet({ ...selectedPet, avatarUrl });
@@ -222,7 +223,6 @@ const PetProfilePage: React.FC = () => {
   const handleConnectKey = async () => {
     await window.aistudio.openSelectKey();
     setShowKeyRequirement(false);
-    // Proceed to generate after selection
     generateAIAvatar();
   };
 
@@ -268,8 +268,12 @@ const PetProfilePage: React.FC = () => {
             onClick={() => { setSelectedPet(p); setIsAdding(false); setIsEditing(false); }}
             className={`flex flex-col items-center gap-3 p-4 rounded-[2.5rem] border-2 transition-all ${selectedPet?.id === p.id && !isAdding ? 'bg-theme-light border-theme scale-105 shadow-lg' : 'bg-white border-transparent hover:border-slate-200'}`}
           >
-            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-inner bg-slate-100">
-              <img src={p.avatarUrl || `https://picsum.photos/seed/${p.id}/200`} className="w-full h-full object-cover" />
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-inner bg-slate-50 flex items-center justify-center">
+              {p.avatarUrl ? (
+                <img src={p.avatarUrl} className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-slate-200"><PawPrint size={24} /></div>
+              )}
             </div>
             <span className={`font-black text-xs uppercase tracking-widest ${selectedPet?.id === p.id && !isAdding ? 'text-theme' : 'text-slate-500'}`}>{p.name}</span>
           </button>
@@ -335,12 +339,16 @@ const PetProfilePage: React.FC = () => {
               <div className="absolute top-0 left-0 w-full h-2 bg-theme"></div>
               <div className="flex flex-col items-center text-center space-y-6">
                 <div className="relative">
-                  <div className="w-48 h-48 rounded-[3.5rem] overflow-hidden border-4 border-white shadow-2xl transition-transform group-hover:scale-[1.02] bg-slate-50">
-                    <img 
-                      src={selectedPet.avatarUrl || `https://picsum.photos/seed/${selectedPet.id}/400`} 
-                      className={`w-full h-full object-cover ${isGeneratingAvatar ? 'opacity-30 grayscale' : ''}`} 
-                      alt={selectedPet.name} 
-                    />
+                  <div className="w-48 h-48 rounded-[3.5rem] overflow-hidden border-4 border-white shadow-2xl transition-transform group-hover:scale-[1.02] bg-slate-50 flex items-center justify-center">
+                    {selectedPet.avatarUrl ? (
+                      <img 
+                        src={selectedPet.avatarUrl} 
+                        className={`w-full h-full object-cover ${isGeneratingAvatar ? 'opacity-30 grayscale' : ''}`} 
+                        alt={selectedPet.name} 
+                      />
+                    ) : (
+                      <div className="text-slate-200"><Dog size={64} /></div>
+                    )}
                     {isGeneratingAvatar && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <Loader2 size={32} className="animate-spin text-theme" />
