@@ -95,13 +95,17 @@ const calculateAge = (birthday: string) => {
   if (!birthday) return { years: 0, months: 0 };
   const birthDate = new Date(birthday);
   const today = new Date();
+  
+  // Validation: If birthday is in the future, return 0
+  if (birthDate > today) return { years: 0, months: 0 };
+
   let years = today.getFullYear() - birthDate.getFullYear();
   let months = today.getMonth() - birthDate.getMonth();
   if (months < 0) {
     years--;
     months += 12;
   }
-  return { years, months };
+  return { years: Math.max(0, years), months: Math.max(0, months) };
 };
 
 const PetProfilePage: React.FC = () => {
@@ -121,6 +125,7 @@ const PetProfilePage: React.FC = () => {
     weightHistory: [], vaccinations: [] 
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newWeight, setNewWeight] = useState('');
@@ -147,8 +152,22 @@ const PetProfilePage: React.FC = () => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}&color=4f46e5&bgcolor=ffffff`;
   };
 
+  const validateBirthday = (birthday?: string) => {
+    if (!birthday) return false;
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    return birthDate <= today;
+  };
+
   const handleAddPet = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (!validateBirthday(newPet.birthday)) {
+      setError("Birth date cannot be in the future.");
+      return;
+    }
+
     const id = crypto.randomUUID();
     const { years, months } = calculateAge(newPet.birthday || '');
     const qrCodeUrl = generateQRCode(newPet.name || 'My Pet');
@@ -173,6 +192,13 @@ const PetProfilePage: React.FC = () => {
   const handleUpdatePet = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPet) return;
+    setError(null);
+
+    if (!validateBirthday(selectedPet.birthday)) {
+      setError("Birth date cannot be in the future.");
+      return;
+    }
+
     const { years, months } = calculateAge(selectedPet.birthday || '');
     const updatedPet = { 
       ...selectedPet, 
@@ -271,6 +297,9 @@ const PetProfilePage: React.FC = () => {
     return { lastWeight, nextVaccine };
   }, [selectedPet]);
 
+  // Today's date string for input 'max' attribute
+  const todayStr = new Date().toISOString().split("T")[0];
+
   return (
     <div className="max-w-6xl mx-auto pb-20 space-y-12">
       <div className="flex flex-col md:flex-row items-center justify-between gap-8">
@@ -292,7 +321,7 @@ const PetProfilePage: React.FC = () => {
         {pets.map(p => (
           <button 
             key={p.id} 
-            onClick={() => { setSelectedPet(p); setIsAdding(false); setIsEditing(false); }}
+            onClick={() => { setSelectedPet(p); setIsAdding(false); setIsEditing(false); setError(null); }}
             className={`flex flex-col items-center gap-3 p-4 rounded-[2.5rem] border-2 transition-all ${selectedPet?.id === p.id && !isAdding ? 'bg-theme-light border-theme scale-105 shadow-lg' : 'bg-white border-transparent hover:border-slate-200'}`}
           >
             <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-inner bg-slate-100 flex items-center justify-center">
@@ -372,7 +401,7 @@ const PetProfilePage: React.FC = () => {
             <h2 className="text-3xl font-black text-slate-900">
               {isAdding ? (step === 1 ? 'Pet Category' : step === 2 ? 'Which Species?' : 'Final Details') : 'Edit Profile'}
             </h2>
-            <button onClick={() => { setIsAdding(false); setIsEditing(false); setStep(1); }} className="text-slate-400 hover:text-slate-600 font-bold flex items-center gap-1"><X size={20} /> Cancel</button>
+            <button onClick={() => { setIsAdding(false); setIsEditing(false); setStep(1); setError(null); }} className="text-slate-400 hover:text-slate-600 font-bold flex items-center gap-1"><X size={20} /> Cancel</button>
           </div>
           {isAdding && step === 1 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -391,6 +420,11 @@ const PetProfilePage: React.FC = () => {
             </div>
           ) : (
             <form onSubmit={isAdding ? handleAddPet : handleUpdatePet} className="space-y-6">
+              {error && (
+                <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-sm font-bold flex items-center gap-2 animate-in slide-in-from-top-2">
+                  <AlertCircle size={18} /> {error}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pet Name</label>
@@ -406,7 +440,15 @@ const PetProfilePage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Birthday</label>
-                    <input type="date" required value={isAdding ? newPet.birthday : selectedPet?.birthday} onChange={e => isAdding ? setNewPet({ ...newPet, birthday: e.target.value }) : setSelectedPet({...selectedPet!, birthday: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl outline-none ring-theme focus:ring-4 transition-all" />
+                    <input 
+                      type="date" 
+                      required 
+                      max={todayStr}
+                      value={isAdding ? newPet.birthday : selectedPet?.birthday} 
+                      onChange={e => isAdding ? setNewPet({ ...newPet, birthday: e.target.value }) : setSelectedPet({...selectedPet!, birthday: e.target.value})} 
+                      className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl outline-none ring-theme focus:ring-4 transition-all" 
+                    />
+                    <p className="text-[9px] font-bold text-slate-400 uppercase ml-1 mt-1">Cannot be a future date</p>
                   </div>
               </div>
               <div className="space-y-1">
@@ -469,7 +511,8 @@ const PetProfilePage: React.FC = () => {
                 </div>
 
                 <div className="w-full p-4 bg-slate-50 rounded-[2rem] flex flex-col items-center gap-4 border border-slate-100/50">
-                  <img src={selectedPet.qrCodeUrl} className="w-40 h-40 bg-white p-2 rounded-2xl shadow-inner border border-slate-100" alt="QR ID" />
+                  {/* Dynamic fresh QR code display ensuring Parent/Pet metadata is always updated visually */}
+                  <img src={generateQRCode(selectedPet.name)} className="w-40 h-40 bg-white p-2 rounded-2xl shadow-inner border border-slate-100" alt="QR ID" />
                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-mono">SSP-ID: {selectedPet.id.slice(0, 8).toUpperCase()}</div>
                 </div>
               </div>
