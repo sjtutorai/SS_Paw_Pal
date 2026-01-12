@@ -65,9 +65,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
         ${isCollapsed ? 'md:w-24' : 'md:w-72'}
         w-72 flex flex-col border-r border-slate-100
       `}>
-        <div className={`h-20 flex items-center justify-between px-6 flex-shrink-0 transition-all duration-500 ${!isCollapsed || isOpen ? 'bg-indigo-600' : 'bg-white border-b border-slate-50'}`}>
+        {/* Dynamic Theme Background applied here */}
+        <div className={`h-20 flex items-center justify-between px-6 flex-shrink-0 transition-all duration-500 transition-theme ${!isCollapsed || isOpen ? 'bg-theme' : 'bg-white border-b border-slate-50'}`}>
           <div className={`flex items-center gap-4 overflow-hidden transition-all duration-500 ${isCollapsed && !isOpen ? 'md:justify-center w-full' : ''}`}>
-            <div className={`w-10 h-10 rounded-xl flex-shrink-0 shadow-lg flex items-center justify-center transition-all duration-500 ${!isCollapsed || isOpen ? 'bg-white rotate-0' : 'bg-indigo-600 rotate-12'}`}>
+            <div className={`w-10 h-10 rounded-xl flex-shrink-0 shadow-lg flex items-center justify-center transition-all duration-500 ${!isCollapsed || isOpen ? 'bg-white rotate-0' : 'bg-theme rotate-12'}`}>
               <img src={LOGO_URL} alt="Logo" className="w-8 h-8 object-contain" />
             </div>
             {(!isCollapsed || isOpen) && (
@@ -84,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`hidden md:flex p-1.5 absolute -right-3 top-24 bg-white border border-slate-200 rounded-full shadow-lg hover:shadow-xl transition-all text-slate-400 hover:text-indigo-600 z-[60] active:scale-90`}
+            className={`hidden md:flex p-1.5 absolute -right-3 top-24 bg-white border border-slate-200 rounded-full shadow-lg hover:shadow-xl transition-all text-slate-400 hover:text-theme z-[60] active:scale-90`}
           >
             {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
@@ -101,12 +102,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                 className={`
                   flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 group relative
                   ${isActive 
-                    ? 'bg-indigo-50 text-indigo-700 font-black shadow-inner' 
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}
+                    ? 'bg-theme-light text-theme font-black shadow-inner' 
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-theme'}
                   ${isCollapsed && !isOpen ? 'md:justify-center' : ''}
                 `}
               >
-                <item.icon size={22} className={`transition-all duration-300 ${isActive ? 'text-indigo-600 scale-110' : 'text-slate-400 group-hover:text-indigo-500 group-hover:scale-110'}`} />
+                <item.icon size={22} className={`transition-all duration-300 ${isActive ? 'text-theme scale-110' : 'text-slate-400 group-hover:text-theme group-hover:scale-110'}`} />
                 {(!isCollapsed || isOpen) && (
                   <span className="text-sm font-bold tracking-tight">{item.label}</span>
                 )}
@@ -119,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                 )}
 
                 {isActive && (
-                  <div className="absolute left-0 w-1 h-8 bg-indigo-600 rounded-r-full"></div>
+                  <div className="absolute left-0 w-1 h-8 bg-theme rounded-r-full"></div>
                 )}
               </Link>
             );

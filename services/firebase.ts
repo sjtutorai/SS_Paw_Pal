@@ -83,6 +83,31 @@ export const loginWithIdentifier = async (identifier: string, pass: string) => {
   }
 };
 
+// Fix: Implement missing signUpWithEmail function required by Login.tsx
+export const signUpWithEmail = async (email: string, pass: string, fullName: string, username: string) => {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, pass);
+    if (result.user) {
+      await updateProfile(result.user, { displayName: fullName });
+      
+      const userRef = doc(db, "users", result.user.uid);
+      await setDoc(userRef, {
+        username: username.toLowerCase().replace(/\s/g, ''),
+        email: email,
+        displayName: fullName,
+        photoURL: null,
+        lastLogin: new Date().toISOString()
+      }, { merge: true });
+      
+      return result.user;
+    }
+    throw new Error("Failed to create user account.");
+  } catch (error: any) {
+    console.error("Signup failed:", error);
+    throw error;
+  }
+};
+
 export const updateUserProfile = async (uid: string, data: { displayName?: string, username?: string, phoneNumber?: string }) => {
   const user = auth.currentUser;
   if (!user) throw new Error("No authenticated user found.");

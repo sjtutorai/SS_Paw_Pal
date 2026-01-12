@@ -44,28 +44,33 @@ const Chat: React.FC = () => {
       orderBy("lastTimestamp", "desc")
     );
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const sessionData = await Promise.all(snapshot.docs.map(async (d) => {
-        const data = d.data();
-        const otherId = data.participants.find((p: string) => p !== user.uid);
-        const userDoc = await getDoc(doc(db, "users", otherId));
-        const userData = userDoc.data();
+    // Fix: Refactored the async onSnapshot callback into a stable function to fix scoping and syntax errors.
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const updateSessionsList = async () => {
+        const sessionData = await Promise.all(snapshot.docs.map(async (d) => {
+          const data = d.data();
+          const otherId = data.participants.find((p: string) => p !== user.uid);
+          const userDoc = await getDoc(doc(db, "users", otherId));
+          const userData = userDoc.data();
 
-        return {
-          id: d.id,
-          ...data,
-          otherUser: {
-            uid: otherId,
-            displayName: userData?.displayName || 'Unknown User',
-            photoURL: userData?.photoURL || '',
-            phoneNumber: userData?.phoneNumber || '',
-            username: userData?.username || ''
-          }
-        } as ChatSession;
-      }));
-      setSessions(sessionData);
-      setLoading(false);
-    }));
+          return {
+            id: d.id,
+            ...data,
+            otherUser: {
+              uid: otherId,
+              displayName: userData?.displayName || 'Unknown User',
+              photoURL: userData?.photoURL || '',
+              phoneNumber: userData?.phoneNumber || '',
+              username: userData?.username || ''
+            }
+          } as ChatSession;
+        }));
+        setSessions(sessionData);
+        setLoading(false);
+      };
+      
+      updateSessionsList();
+    });
 
     return () => unsubscribe();
   }, [user]);
@@ -224,7 +229,7 @@ const Chat: React.FC = () => {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type your message..." 
-                  className="flex-1 bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-medium"
+                  className="flex-1 bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-4 focus:ring-indigo-100 transition-all font-medium"
                 />
                 <button 
                   type="submit" 

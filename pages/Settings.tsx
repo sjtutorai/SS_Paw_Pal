@@ -21,13 +21,26 @@ import {
   Save,
   Loader2,
   AtSign,
-  Phone
+  Phone,
+  Palette,
+  // Fix: Added Plus icon import
+  Plus
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { logout, db, updateUserProfile } from '../services/firebase';
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
+
+const THEME_PRESETS = [
+  { name: 'Indigo', color: '#4f46e5' },
+  { name: 'Rose', color: '#e11d48' },
+  { name: 'Emerald', color: '#10b981' },
+  { name: 'Amber', color: '#f59e0b' },
+  { name: 'Violet', color: '#7c3aed' },
+  { name: 'Sky', color: '#0ea5e9' },
+  { name: 'Midnight', color: '#0f172a' },
+];
 
 const Settings: React.FC = () => {
   const { user } = useAuth();
@@ -38,6 +51,7 @@ const Settings: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('ssp_theme_color') || '#4f46e5');
   
   // Form State
   const [editData, setEditData] = useState({
@@ -68,10 +82,10 @@ const Settings: React.FC = () => {
     fetchUserData();
   }, [user]);
 
-  const togglePreference = (key: string, current: boolean, setter: (v: boolean) => void) => {
-    const newVal = !current;
-    setter(newVal);
-    localStorage.setItem(key, String(newVal));
+  const changeTheme = (color: string) => {
+    setCurrentTheme(color);
+    localStorage.setItem('ssp_theme_color', color);
+    addNotification('Theme Updated', 'Your visual preferences have been applied.', 'success');
   };
 
   const handleSaveProfile = async () => {
@@ -109,8 +123,8 @@ const Settings: React.FC = () => {
     <div className="max-w-4xl mx-auto pb-32 space-y-12 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
-          <div className="inline-flex px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-black uppercase tracking-widest mb-2">Settings</div>
-          <h2 className="text-5xl font-black text-slate-900 tracking-tighter">Account & Identity</h2>
+          <div className="inline-flex px-4 py-1.5 bg-theme-light text-theme rounded-full text-xs font-black uppercase tracking-widest mb-2 transition-theme">Personalization</div>
+          <h2 className="text-5xl font-black text-slate-900 tracking-tighter">Settings Hub</h2>
         </div>
         {saveStatus && (
           <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl border animate-in slide-in-from-top-4 ${saveStatus.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-rose-700'}`}>
@@ -124,11 +138,11 @@ const Settings: React.FC = () => {
         {/* Profile Card */}
         <div className="bg-white rounded-[3.5rem] p-10 md:p-14 border border-slate-100 shadow-sm space-y-10 relative overflow-hidden">
           <div className="flex flex-col md:flex-row items-center gap-10">
-            <div className="w-32 h-32 rounded-[3rem] bg-indigo-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden shrink-0 relative">
+            <div className="w-32 h-32 rounded-[3rem] bg-theme-light border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden shrink-0 relative transition-theme">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt="Me" className="w-full h-full object-cover" />
               ) : (
-                <UserIcon size={56} className="text-indigo-200" />
+                <UserIcon size={56} className="text-theme opacity-30" />
               )}
             </div>
             
@@ -140,7 +154,7 @@ const Settings: React.FC = () => {
                     <input 
                       value={editData.displayName}
                       onChange={(e) => setEditData({...editData, displayName: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-2xl font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-2xl font-bold text-slate-800 outline-none ring-theme focus:ring-4 transition-all"
                       placeholder="Your name"
                     />
                   </div>
@@ -151,7 +165,7 @@ const Settings: React.FC = () => {
                       <input 
                         value={editData.username}
                         onChange={(e) => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})}
-                        className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-2xl font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                        className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-2xl font-bold text-slate-800 outline-none ring-theme focus:ring-4 transition-all"
                         placeholder="username"
                       />
                     </div>
@@ -164,7 +178,7 @@ const Settings: React.FC = () => {
                         type="tel"
                         value={editData.phoneNumber}
                         onChange={(e) => setEditData({...editData, phoneNumber: e.target.value})}
-                        className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-2xl font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                        className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-2xl font-bold text-slate-800 outline-none ring-theme focus:ring-4 transition-all"
                         placeholder="+1 234 567 890"
                       />
                     </div>
@@ -173,7 +187,7 @@ const Settings: React.FC = () => {
                     <button 
                       onClick={handleSaveProfile}
                       disabled={isSaving}
-                      className="flex-1 bg-indigo-600 text-white py-3 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-xl active:scale-95 disabled:opacity-50"
+                      className="flex-1 bg-theme text-white py-3 rounded-2xl font-black flex items-center justify-center gap-2 bg-theme-hover transition-all shadow-xl active:scale-95 disabled:opacity-50"
                     >
                       {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                       Save Changes
@@ -191,7 +205,7 @@ const Settings: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex flex-col md:flex-row md:items-center gap-3">
                     <h3 className="text-4xl font-black text-slate-800 tracking-tight">@{dbUser?.username || 'user'}</h3>
-                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                    <span className="px-3 py-1 bg-theme-light text-theme rounded-full text-[10px] font-black uppercase tracking-widest transition-theme">
                       {dbUser?.displayName || user?.displayName}
                     </span>
                   </div>
@@ -210,6 +224,58 @@ const Settings: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Theme Picker Section */}
+        <div className="bg-white rounded-[3.5rem] p-10 md:p-14 border border-slate-100 shadow-sm space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-theme-light text-theme rounded-2xl transition-theme">
+              <Palette size={24} />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-800 tracking-tight">App Theme Color</h3>
+              <p className="text-slate-500 font-medium text-sm">Choose the primary color for buttons, headers, and accents.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-4">
+            {THEME_PRESETS.map((theme) => (
+              <button
+                key={theme.color}
+                onClick={() => changeTheme(theme.color)}
+                className={`group relative flex flex-col items-center gap-2 p-2 rounded-3xl transition-all ${
+                  currentTheme === theme.color ? 'bg-slate-50 ring-2 ring-slate-200' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div 
+                  className={`w-14 h-14 rounded-2xl shadow-lg transition-transform group-hover:scale-110 flex items-center justify-center ${
+                    currentTheme === theme.color ? 'scale-105' : ''
+                  }`}
+                  style={{ backgroundColor: theme.color }}
+                >
+                  {currentTheme === theme.color && <CheckCircle2 size={24} className="text-white" />}
+                </div>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                  currentTheme === theme.color ? 'text-theme' : 'text-slate-400'
+                }`}>
+                  {theme.name}
+                </span>
+              </button>
+            ))}
+            
+            {/* Custom Color Picker (Optional/Bonus) */}
+            <label className="group relative flex flex-col items-center gap-2 p-2 rounded-3xl hover:bg-slate-50 cursor-pointer">
+              <div className="w-14 h-14 rounded-2xl shadow-lg bg-gradient-to-tr from-rose-500 via-indigo-500 to-emerald-500 flex items-center justify-center transition-transform group-hover:scale-110">
+                <Plus size={24} className="text-white" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Custom</span>
+              <input 
+                type="color" 
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={(e) => changeTheme(e.target.value)}
+              />
+            </label>
           </div>
         </div>
       </div>

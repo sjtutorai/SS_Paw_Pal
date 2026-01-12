@@ -20,7 +20,7 @@ import {
   AlertCircle, Camera, Check, ChevronRight, Cat, Bird, Rabbit, 
   Trash2, Edit3, ArrowLeft, Stethoscope, Search, Star, MessageCircle,
   Heart, Fish, Bug, Thermometer, Droplets, Calendar, LineChart, Syringe, TrendingUp,
-  Sparkles, Info, Quote, Upload, Loader2, Wand2, QrCode, Scan, X, ExternalLink
+  Sparkles, Info, Quote, Upload, Loader2, Wand2, QrCode, Scan, X, ExternalLink, Save
 } from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -65,7 +65,7 @@ export const BREED_DATA: Record<string, string[]> = {
   Salamander: ['Axolotl', 'Tiger Salamander', 'Fire Salamander'],
   Newt: ['Fire-bellied Newt', 'Eastern Newt', 'Ribbed Newt'],
   'Ant Farm': ['Harvester Ant', 'Carpenter Ant', 'Garden Ant'],
-  'Stick Insect': ['Indian Stick Insect', 'Giant Prickly Stick Insect'],
+  'Stick Insect': ['Stick Insect'],
   Tarantula: ['Mexican Red Knee', 'Rose Hair', 'Pink Toe'],
   Beetle: ['Hercules Beetle', 'Stag Beetle', 'Rhino Beetle'],
   Other: ['Exotic Pet', 'Wild Animal', 'Invertebrate']
@@ -98,6 +98,7 @@ const PetProfilePage: React.FC = () => {
   const [pets, setPets] = useState<PetProfile[]>([]);
   const [selectedPet, setSelectedPet] = useState<PetProfile | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [step, setStep] = useState(1);
@@ -150,6 +151,24 @@ const PetProfilePage: React.FC = () => {
     setSelectedPet(completePet);
     setSaveSuccess(true);
     setTimeout(() => { setIsAdding(false); setSaveSuccess(false); setStep(1); }, 1500);
+  };
+
+  const handleUpdatePet = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPet) return;
+    
+    const { years, months } = calculateAge(selectedPet.birthday || '');
+    const updatedPet = {
+      ...selectedPet,
+      ageYears: String(years),
+      ageMonths: String(months)
+    };
+
+    const updatedPets = pets.map(p => p.id === selectedPet.id ? updatedPet : p);
+    savePetsToStorage(updatedPets);
+    setSelectedPet(updatedPet);
+    setSaveSuccess(true);
+    setTimeout(() => { setIsEditing(false); setSaveSuccess(false); }, 1500);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,10 +244,10 @@ const PetProfilePage: React.FC = () => {
       <div className="max-w-2xl mx-auto py-24 text-center animate-fade-in">
         <div className="bg-slate-900 text-white rounded-[3.5rem] p-12 shadow-2xl relative overflow-hidden">
           <button onClick={() => setIsScanning(false)} className="absolute top-8 right-8 text-white/40 hover:text-white"><X size={32} /></button>
-          <div className="w-64 h-64 border-2 border-indigo-50 rounded-3xl mx-auto mb-10 flex items-center justify-center relative">
-            <div className="absolute inset-0 bg-indigo-500/10 animate-pulse"></div>
-            <Scan size={80} className="text-indigo-400" />
-            <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 animate-[scan_2s_infinite]"></div>
+          <div className="w-64 h-64 border-2 border-theme rounded-3xl mx-auto mb-10 flex items-center justify-center relative">
+            <div className="absolute inset-0 bg-theme/10 animate-pulse"></div>
+            <Scan size={80} className="text-theme" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-theme animate-[scan_2s_infinite]"></div>
           </div>
           <h3 className="text-2xl font-black mb-4">Scanner Ready</h3>
           <p className="text-slate-400 font-medium max-w-sm mx-auto">Position your pet's SSP-ID QR code within the frame to identify them instantly.</p>
@@ -245,10 +264,10 @@ const PetProfilePage: React.FC = () => {
           <p className="text-slate-500 font-medium">Manage and identify your registered companions.</p>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => setIsScanning(true)} className="flex items-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
-            <Scan size={20} className="text-indigo-600" /> Scan QR
+          <button onClick={() => setIsScanning(false)} className="flex items-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
+            <Scan size={20} className="text-theme" /> Scan QR
           </button>
-          <button onClick={() => setIsAdding(true)} className="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100">
+          <button onClick={() => { setStep(1); setIsAdding(true); }} className="flex items-center gap-3 px-8 py-4 bg-theme text-white rounded-2xl font-black text-sm uppercase tracking-widest bg-theme-hover transition-all shadow-xl shadow-theme/10">
             <Plus size={20} /> Add New Pet
           </button>
         </div>
@@ -258,104 +277,237 @@ const PetProfilePage: React.FC = () => {
         {pets.map(p => (
           <button 
             key={p.id} 
-            onClick={() => setSelectedPet(p)}
-            className={`flex flex-col items-center gap-3 p-4 rounded-[2.5rem] border-2 transition-all ${selectedPet?.id === p.id ? 'bg-indigo-50 border-indigo-600 scale-105 shadow-lg' : 'bg-white border-transparent hover:border-slate-200'}`}
+            onClick={() => { setSelectedPet(p); setIsAdding(false); setIsEditing(false); }}
+            className={`flex flex-col items-center gap-3 p-4 rounded-[2.5rem] border-2 transition-all ${selectedPet?.id === p.id && !isAdding ? 'bg-theme-light border-theme scale-105 shadow-lg' : 'bg-white border-transparent hover:border-slate-200'}`}
           >
             <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-inner bg-slate-100">
               <img src={p.avatarUrl || `https://picsum.photos/seed/${p.id}/200`} className="w-full h-full object-cover" />
             </div>
-            <span className={`font-black text-xs uppercase tracking-widest ${selectedPet?.id === p.id ? 'text-indigo-700' : 'text-slate-500'}`}>{p.name}</span>
+            <span className={`font-black text-xs uppercase tracking-widest ${selectedPet?.id === p.id && !isAdding ? 'text-theme' : 'text-slate-500'}`}>{p.name}</span>
           </button>
         ))}
       </div>
 
-      {isAdding ? (
-        <div className="max-w-3xl mx-auto animate-fade-in bg-white p-14 rounded-[3.5rem] shadow-2xl border border-slate-100 relative">
-          {saveSuccess && <div className="absolute inset-0 bg-indigo-600/95 flex flex-col items-center justify-center z-50 text-white rounded-[3.5rem]"><Check size={48} className="mb-4" /><h3 className="text-2xl font-black">Added to Family!</h3></div>}
+      {(isAdding || isEditing) ? (
+        <div className="max-w-3xl mx-auto animate-fade-in bg-white p-14 rounded-[3.5rem] shadow-2xl border border-slate-100 relative overflow-hidden">
+          {saveSuccess && <div className="absolute inset-0 bg-theme/95 flex flex-col items-center justify-center z-50 text-white"><Check size={48} className="mb-4" /><h3 className="text-2xl font-black">{isEditing ? 'Updated Successfully!' : 'Added to Family!'}</h3></div>}
           <div className="flex items-center justify-between mb-10">
-            <h2 className="text-3xl font-black text-slate-900">{step === 1 ? 'Pet Category' : step === 2 ? 'Which Species?' : 'Final Details'}</h2>
-            {step > 1 && <button onClick={() => setStep(step - 1)} className="text-slate-400 font-bold flex items-center gap-1"><ArrowLeft size={16} /> Back</button>}
+            <h2 className="text-3xl font-black text-slate-900">
+              {isAdding ? (step === 1 ? 'Pet Category' : step === 2 ? 'Which Species?' : 'Final Details') : 'Edit Profile'}
+            </h2>
+            <button onClick={() => { setIsAdding(false); setIsEditing(false); setStep(1); }} className="text-slate-400 hover:text-slate-600 font-bold flex items-center gap-1"><X size={20} /> Cancel</button>
           </div>
-          {step === 1 ? (
+          {isAdding && step === 1 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {PET_CATEGORIES.map(cat => (
-                <button key={cat.id} onClick={() => { setSelectedCategory(cat); setStep(2); }} className="p-8 rounded-[2.5rem] bg-slate-50 border border-transparent hover:border-indigo-500 hover:bg-white hover:shadow-xl transition-all flex flex-col items-center gap-4 group">
-                  <cat.icon className="w-12 h-12 text-indigo-600" />
+                <button key={cat.id} onClick={() => { setSelectedCategory(cat); setStep(2); }} className="p-8 rounded-[2.5rem] bg-slate-50 border border-transparent hover:border-theme hover:bg-white hover:shadow-xl transition-all flex flex-col items-center gap-4 group">
+                  <cat.icon className="w-12 h-12 text-theme" />
                   <span className="font-black text-xs uppercase tracking-widest">{cat.name}</span>
                 </button>
               ))}
             </div>
-          ) : step === 2 ? (
+          ) : isAdding && step === 2 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {selectedCategory?.species.map((s: string) => (
-                <button key={s} onClick={() => { setNewPet({ ...newPet, species: s, breed: BREED_DATA[s]?.[0] || 'Unknown' }); setStep(3); }} className="p-4 rounded-2xl border hover:border-indigo-600 hover:bg-indigo-50 transition-all font-bold text-slate-700">{s}</button>
+                <button key={s} onClick={() => { setNewPet({ ...newPet, species: s, breed: BREED_DATA[s]?.[0] || 'Unknown' }); setStep(3); }} className="p-4 rounded-2xl border hover:border-theme hover:bg-theme-light transition-all font-bold text-slate-700">{s}</button>
               ))}
             </div>
           ) : (
-            <form onSubmit={handleAddPet} className="space-y-6">
+            <form onSubmit={isAdding ? handleAddPet : handleUpdatePet} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <input required value={newPet.name} onChange={e => setNewPet({ ...newPet, name: e.target.value })} className="w-full bg-slate-50 border p-4 rounded-2xl outline-none" placeholder="Pet Name" />
-                <select value={newPet.breed} onChange={e => setNewPet({ ...newPet, breed: e.target.value })} className="w-full bg-slate-50 border p-4 rounded-2xl outline-none">
-                  {BREED_DATA[newPet.species!]?.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pet Name</label>
+                  <input required value={isAdding ? newPet.name : selectedPet?.name} onChange={e => isAdding ? setNewPet({ ...newPet, name: e.target.value }) : setSelectedPet({...selectedPet!, name: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl outline-none ring-theme focus:ring-4 transition-all" placeholder="Pet Name" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Breed / Variety</label>
+                  <select value={isAdding ? newPet.breed : selectedPet?.breed} onChange={e => isAdding ? setNewPet({ ...newPet, breed: e.target.value }) : setSelectedPet({...selectedPet!, breed: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl outline-none ring-theme focus:ring-4 transition-all">
+                    {BREED_DATA[(isAdding ? newPet.species : selectedPet?.species) || 'Dog']?.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
               </div>
-              <input type="date" required value={newPet.birthday} onChange={e => setNewPet({ ...newPet, birthday: e.target.value })} className="w-full bg-slate-50 border p-4 rounded-2xl outline-none" />
-              <textarea value={newPet.bio} onChange={e => setNewPet({ ...newPet, bio: e.target.value })} className="w-full h-32 bg-slate-50 border p-4 rounded-2xl outline-none" placeholder="Short bio..." />
-              <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-[2.5rem] font-bold text-lg hover:bg-indigo-700 transition-all">Register Pet</button>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Birthday</label>
+                <input type="date" required value={isAdding ? newPet.birthday : selectedPet?.birthday} onChange={e => isAdding ? setNewPet({ ...newPet, birthday: e.target.value }) : setSelectedPet({...selectedPet!, birthday: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl outline-none ring-theme focus:ring-4 transition-all" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Short Biography</label>
+                <textarea value={isAdding ? newPet.bio : selectedPet?.bio} onChange={e => isAdding ? setNewPet({ ...newPet, bio: e.target.value }) : setSelectedPet({...selectedPet!, bio: e.target.value})} className="w-full h-32 bg-slate-50 border border-slate-100 p-4 rounded-2xl outline-none ring-theme focus:ring-4 transition-all resize-none" placeholder="Short bio..." />
+              </div>
+              <button type="submit" className="w-full bg-theme text-white py-5 rounded-[2.5rem] font-black text-lg bg-theme-hover transition-all shadow-xl shadow-theme/20 flex items-center justify-center gap-3">
+                <Save size={20} /> {isAdding ? 'Register Pet' : 'Save Changes'}
+              </button>
             </form>
           )}
         </div>
       ) : selectedPet ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-1 space-y-8">
+            {/* Pet Card Refined UI */}
             <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600"></div>
+              <div className="absolute top-0 left-0 w-full h-2 bg-theme"></div>
               <div className="flex flex-col items-center text-center space-y-6">
-                <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-indigo-50 shadow-lg">
-                  <img src={selectedPet.avatarUrl || `https://picsum.photos/seed/${selectedPet.id}/300`} className="w-full h-full object-cover" />
+                <div className="relative">
+                  <div className="w-48 h-48 rounded-[3.5rem] overflow-hidden border-4 border-white shadow-2xl transition-transform group-hover:scale-[1.02] bg-slate-50">
+                    <img 
+                      src={selectedPet.avatarUrl || `https://picsum.photos/seed/${selectedPet.id}/400`} 
+                      className={`w-full h-full object-cover ${isGeneratingAvatar ? 'opacity-30 grayscale' : ''}`} 
+                      alt={selectedPet.name} 
+                    />
+                    {isGeneratingAvatar && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 size={32} className="animate-spin text-theme" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute -bottom-2 -right-2 flex gap-2">
+                    <button 
+                      onClick={() => fileInputRef.current?.click()} 
+                      className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-slate-600 hover:text-theme transition-all border border-slate-50"
+                      title="Upload Photo"
+                    >
+                      <Camera size={20} />
+                    </button>
+                    <button 
+                      onClick={generateAIAvatar} 
+                      disabled={isGeneratingAvatar} 
+                      className="w-12 h-12 bg-theme text-white rounded-2xl shadow-xl flex items-center justify-center bg-theme-hover transition-all disabled:opacity-50"
+                      title="AI Generate Avatar"
+                    >
+                      <Wand2 size={20} />
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-3xl font-black text-slate-900 leading-none">{selectedPet.name}</h3>
-                  <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-2">{selectedPet.breed} • {selectedPet.species}</p>
+
+                <div className="space-y-1">
+                  <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{selectedPet.name}</h3>
+                  <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">{selectedPet.breed} • {selectedPet.species}</p>
                 </div>
-                <div className="w-full p-4 bg-slate-50 rounded-2xl flex flex-col items-center gap-4">
-                  <img src={selectedPet.qrCodeUrl} className="w-40 h-40 bg-white p-2 rounded-xl shadow-inner" alt="QR ID" />
+
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="w-full max-w-[200px] bg-theme text-white py-4 rounded-full font-black text-lg bg-theme-hover transition-all shadow-xl shadow-theme/20 active:scale-95"
+                >
+                  Edit Profile
+                </button>
+
+                <div className="w-full p-4 bg-slate-50 rounded-[2rem] flex flex-col items-center gap-4 border border-slate-100/50">
+                  <img src={selectedPet.qrCodeUrl} className="w-40 h-40 bg-white p-2 rounded-2xl shadow-inner border border-slate-100" alt="QR ID" />
                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-mono">SSP-ID: {selectedPet.id.slice(0, 8)}</div>
                 </div>
-                <div className="flex gap-2 w-full">
-                  <button onClick={() => fileInputRef.current?.click()} className="flex-1 p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all"><Camera size={20} className="mx-auto" /></button>
-                  <button onClick={generateAIAvatar} disabled={isGeneratingAvatar} className="flex-1 p-3 bg-slate-900 text-white rounded-xl hover:bg-black transition-all disabled:opacity-50"><Sparkles size={20} className="mx-auto" /></button>
-                </div>
-                <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
+                
+                <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
               </div>
+            </div>
+            
+            <div className="bg-slate-900 rounded-[3rem] p-8 text-white space-y-4 shadow-2xl relative overflow-hidden">
+              <Quote className="absolute -top-2 -left-2 w-12 h-12 text-white/5" />
+              <h4 className="font-black text-lg tracking-tight">AI Care Context</h4>
+              <p className="text-slate-400 text-sm leading-relaxed italic">"{selectedPet.bio || 'This companion is currently undergoing deep behavioral analysis.'}"</p>
             </div>
           </div>
 
           <div className="lg:col-span-2 space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+              <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-rose-50 text-rose-600 rounded-xl"><Weight size={24} /></div>
-                  <h4 className="font-black text-slate-800 uppercase tracking-widest text-xs">Weight (kg)</h4>
+                  <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl"><Weight size={24} /></div>
+                  <h4 className="font-black text-slate-800 uppercase tracking-widest text-[10px]">Recent Weight (kg)</h4>
                 </div>
                 <div className="flex items-end gap-3 mb-6">
-                  <span className="text-5xl font-black">{healthSummary?.lastWeight?.weight || '--'}</span>
-                  <span className="text-slate-400 font-bold mb-1">KG</span>
+                  <span className="text-6xl font-black tracking-tighter">{healthSummary?.lastWeight?.weight || '--'}</span>
+                  <span className="text-slate-400 font-bold mb-2">KG</span>
                 </div>
                 <div className="flex gap-2">
-                  <input value={newWeight} onChange={e => setNewWeight(e.target.value)} type="number" className="flex-1 bg-slate-50 border rounded-xl p-3 outline-none" placeholder="Log weight..." />
-                  <button onClick={handleAddWeight} className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg"><Plus size={20} /></button>
+                  <input 
+                    value={newWeight} 
+                    onChange={e => setNewWeight(e.target.value)} 
+                    type="number" 
+                    className="flex-1 bg-slate-50 border border-slate-100 rounded-xl p-3 outline-none ring-theme focus:ring-4 transition-all" 
+                    placeholder="Log weight..." 
+                  />
+                  <button onClick={handleAddWeight} className="p-3 bg-theme text-white rounded-xl shadow-lg bg-theme-hover transition-all"><Plus size={20} /></button>
+                </div>
+              </div>
+              
+              <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><Syringe size={24} /></div>
+                  <h4 className="font-black text-slate-800 uppercase tracking-widest text-[10px]">Next Vaccination</h4>
+                </div>
+                <div className="mb-6">
+                  <p className="text-2xl font-black text-slate-700 truncate">{healthSummary?.nextVaccine?.name || 'All Current'}</p>
+                  <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mt-1">
+                    {healthSummary?.nextVaccine ? `Due Date: ${healthSummary.nextVaccine.nextDueDate}` : 'Vaccination record is healthy'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button className="w-full py-4 bg-theme-light text-theme font-black rounded-2xl text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all">Download Log</button>
                 </div>
               </div>
             </div>
+
+            <div className="bg-white rounded-[3.5rem] p-10 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <h4 className="text-2xl font-black text-slate-800 flex items-center gap-3"><LineChart className="text-theme" /> Vital Statistics</h4>
+                <div className="px-4 py-1.5 bg-theme-light text-theme rounded-full text-[10px] font-black uppercase tracking-widest">Weight History</div>
+              </div>
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
+                {selectedPet.weightHistory.length > 0 ? selectedPet.weightHistory.map((w, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl border border-white hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-2 h-2 rounded-full bg-theme opacity-60"></div>
+                      <span className="font-black text-slate-400 text-xs uppercase tracking-widest">{new Date(w.date).toLocaleDateString()}</span>
+                    </div>
+                    <span className="font-black text-slate-800 text-xl">{w.weight} kg</span>
+                  </div>
+                )) : <div className="py-20 text-center text-slate-400 font-medium italic">No vital records found. Start logging weight to track development.</div>}
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-4">
+              <button onClick={() => { if(confirm("Permanently remove this pet profile?")) { const updated = pets.filter(p => p.id !== selectedPet.id); savePetsToStorage(updated); setSelectedPet(updated[0] || null); } }} className="flex items-center gap-2 text-rose-500 font-black text-xs uppercase tracking-widest hover:text-rose-700 transition-all">
+                <Trash2 size={16} /> Delete Companion Profile
+              </button>
+            </div>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="py-32 text-center">
+           <div className="bg-theme-light w-24 h-24 rounded-[3rem] flex items-center justify-center mx-auto mb-8 text-theme shadow-inner">
+             <Dog size={48} />
+           </div>
+           <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Family Registry Empty</h3>
+           <p className="text-slate-500 font-medium mb-10 max-w-sm mx-auto">Register your companions to track their health and generate unique identification codes.</p>
+           <button onClick={() => { setStep(1); setIsAdding(true); }} className="bg-theme text-white px-10 py-5 rounded-[2rem] font-black shadow-2xl shadow-theme/20 bg-theme-hover transition-all active:scale-95">Add First Pet</button>
+        </div>
+      )}
     </div>
   );
 };
 
 const AppContent: React.FC = () => {
+  // Theme Manager: Listen for theme changes and update CSS variables
+  useEffect(() => {
+    const applyTheme = () => {
+      const savedTheme = localStorage.getItem('ssp_theme_color') || '#4f46e5';
+      const root = document.documentElement;
+      
+      // Calculate a darker hover shade (simplified hex calculation)
+      // This is a basic approach; a robust one would convert to HSL and adjust L.
+      const hoverColor = savedTheme; // For simplicity we can use the same or a fixed variance
+      
+      root.style.setProperty('--theme-color', savedTheme);
+      root.style.setProperty('--theme-color-hover', savedTheme + 'dd'); // slight opacity for hover
+      root.style.setProperty('--theme-color-light', savedTheme + '15'); // very transparent for background
+    };
+
+    applyTheme();
+    // Re-apply if user changes it in settings (custom event or just polling)
+    const interval = setInterval(applyTheme, 500);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

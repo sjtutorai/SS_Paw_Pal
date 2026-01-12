@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dazlddxht/image/upload/v1768111415/Smart_Support_for_Pets_tpteed.png">
     <style>
+        :root {
+            --theme-color: #4f46e5; /* Default Indigo 600 */
+            --theme-color-hover: #4338ca; /* Default Indigo 700 */
+            --theme-color-light: #eef2ff; /* Default Indigo 50 */
+        }
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
@@ -15,7 +21,7 @@
             padding: 0;
             overflow-x: hidden;
         }
-        /* Custom scrollbar for a more modern look */
+        /* Custom scrollbar */
         ::-webkit-scrollbar {
           width: 8px;
         }
@@ -28,6 +34,20 @@
         }
         ::-webkit-scrollbar-thumb:hover {
           background: #94a3b8;
+        }
+        
+        /* Dynamic Theme Utilities */
+        .bg-theme { background-color: var(--theme-color) !important; }
+        .bg-theme-hover:hover { background-color: var(--theme-color-hover) !important; }
+        .bg-theme-light { background-color: var(--theme-color-light) !important; }
+        .text-theme { color: var(--theme-color) !important; }
+        .text-theme-hover:hover { color: var(--theme-color-hover) !important; }
+        .border-theme { border-color: var(--theme-color) !important; }
+        .ring-theme:focus { --tw-ring-color: var(--theme-color) !important; }
+        
+        /* Smooth transitions for theme changes */
+        .transition-theme {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
         }
     </style>
 <script type="importmap">
