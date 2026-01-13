@@ -100,6 +100,19 @@ export const getPetById = async (id: string) => {
   return snap.exists() ? snap.data() : null;
 };
 
+export const sendFoundPetNotification = async (pet: any, finderName: string, finderId?: string) => {
+  if (!pet.ownerId) return;
+  const notifRef = collection(db, "users", pet.ownerId, "notifications");
+  await addDoc(notifRef, {
+    title: "🐾 Pet Tag Scanned!",
+    message: `Your pet ${pet.name}'s SSP tag was just scanned by ${finderName}. This person may be trying to reach you!`,
+    type: "warning",
+    timestamp: new Date().toISOString(),
+    read: false,
+    finderId: finderId || "anonymous"
+  });
+};
+
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account consent' });
@@ -128,8 +141,6 @@ export const loginWithIdentifier = async (identifier: string, password: string) 
     const q = query(collection(db, "users"), where("username", "==", identifier.toLowerCase().trim()), limit(1));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
-      // Let firebase handle the error for non-existent user for security.
-      // This will fail with auth/invalid-email which is handled as invalid credential.
       return signInWithEmailAndPassword(auth, identifier, password);
     }
     const userData = querySnapshot.docs[0].data();
@@ -219,7 +230,6 @@ export const sendChatMessage = async (chatId: string, senderId: string, text: st
   });
 };
 
-// New Function: Search for users by email, excluding the current user
 export const searchUsersByEmail = async (email: string, currentUserId: string) => {
   if (!email) return [];
   const q = query(
@@ -232,7 +242,6 @@ export const searchUsersByEmail = async (email: string, currentUserId: string) =
     .filter(user => user.id !== currentUserId);
 };
 
-// New Function: Follow a user
 export const followUser = async (currentUserId: string, targetUserId: string) => {
   const followingRef = doc(db, 'users', currentUserId, 'following', targetUserId);
   await setDoc(followingRef, { timestamp: serverTimestamp() });
@@ -240,7 +249,6 @@ export const followUser = async (currentUserId: string, targetUserId: string) =>
   await setDoc(followersRef, { timestamp: serverTimestamp() });
 };
 
-// New Function: Unfollow a user
 export const unfollowUser = async (currentUserId: string, targetUserId: string) => {
   const followingRef = doc(db, 'users', currentUserId, 'following', targetUserId);
   await deleteDoc(followingRef);
@@ -248,7 +256,6 @@ export const unfollowUser = async (currentUserId: string, targetUserId: string) 
   await deleteDoc(followersRef);
 };
 
-// New Function: Listen for real-time updates on follows
 export const onFollowsUpdate = (
   userId: string,
   callback: (data: { following: string[], followers: string[] }) => void
@@ -278,7 +285,6 @@ export const onFollowsUpdate = (
   };
 };
 
-// New Function: Check for mutual follow
 export const checkMutualFollow = async (userId1: string, userId2: string) => {
   const user1Follows2Doc = await getDoc(doc(db, 'users', userId1, 'following', userId2));
   if (!user1Follows2Doc.exists()) return false;
