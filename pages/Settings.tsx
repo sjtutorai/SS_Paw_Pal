@@ -31,12 +31,12 @@ const THEME_PRESETS = [
 ];
 
 const SURFACE_PRESETS = [
-  { name: 'Midnight', color: '#0f172a' },
-  { name: 'Deep Sea', color: '#1e293b' },
-  { name: 'Obsidian', color: '#000000' },
-  { name: 'Dark Navy', color: '#171717' },
-  { name: 'Charcoal', color: '#262626' },
-  { name: 'Coffee', color: '#1c1917' },
+  { name: 'Slate', color: '#334155' },
+  { name: 'Forest', color: '#14532d' },
+  { name: 'Maroon', color: '#881337' },
+  { name: 'Navy', color: '#1e3a8a' },
+  { name: 'Plum', color: '#581c87' },
+  { name: 'Teal', color: '#115e59' },
 ];
 
 const Settings: React.FC = () => {
@@ -48,7 +48,7 @@ const Settings: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('ssp_theme_color') || '#4f46e5');
-  const [currentSurface, setCurrentSurface] = useState(() => localStorage.getItem('ssp_theme_surface') || '#0f172a');
+  const [currentSurface, setCurrentSurface] = useState(() => localStorage.getItem('ssp_theme_surface') || '#334155');
   
   // Username Validation States
   const [isValidatingUsername, setIsValidatingUsername] = useState(false);
