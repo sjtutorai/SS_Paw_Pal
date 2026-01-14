@@ -11,16 +11,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Stethoscope,
-  Settings,
   Sparkles,
   Send,
   User as UserIcon,
-  ShieldCheck,
-  LayoutGrid,
-  UserSearch,
-  PawPrint
+  UserSearch
 } from 'lucide-react';
-import { AppRoutes, NavItem } from '../types';
+import { AppRoutes } from '../types';
 import { logout } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -140,10 +136,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                       key={item.path}
                       to={item.path}
                       onClick={() => setIsOpen(false)}
+                      style={isActive ? { backgroundColor: 'var(--theme-surface)' } : {}}
                       className={`
                         group relative flex items-center gap-4 px-6 py-4 rounded-full transition-all duration-300 overflow-hidden
                         ${isActive 
-                          ? 'bg-slate-900 text-white shadow-xl' 
+                          ? 'text-white shadow-xl' 
                           : 'text-slate-500 hover:bg-theme-light hover:text-theme'}
                         ${isCollapsed && !isOpen ? 'md:justify-center px-0' : ''}
                       `}
@@ -158,9 +155,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                       {(!isCollapsed || isOpen) ? (
                         <span className="text-[15px] font-bold tracking-tight whitespace-nowrap">{item.label}</span>
                       ) : (
-                        <div className="absolute left-full ml-6 px-4 py-2 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all z-[100] translate-x-[-15px] group-hover:translate-x-0 whitespace-nowrap shadow-2xl">
+                        <div 
+                          style={{ backgroundColor: 'var(--theme-surface)' }}
+                          className="absolute left-full ml-6 px-4 py-2 text-white text-[11px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all z-[100] translate-x-[-15px] group-hover:translate-x-0 whitespace-nowrap shadow-2xl"
+                        >
                           {item.label}
-                          <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-slate-900 rotate-45" />
+                          <div 
+                            style={{ backgroundColor: 'var(--theme-surface)' }}
+                            className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rotate-45" 
+                          />
                         </div>
                       )}
                     </Link>
