@@ -246,7 +246,7 @@ export const sendChatMessage = async (chatId: string, senderId: string, text: st
   });
 };
 
-export const searchUsersByEmail = async (email: string, currentUserId: string) => {
+export const searchUsersByEmail = async (email: string) => {
   if (!email) return [];
   const q = query(
     collection(db, "users"),
@@ -254,8 +254,7 @@ export const searchUsersByEmail = async (email: string, currentUserId: string) =
   );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs
-    .map(doc => ({ id: doc.id, ...doc.data() }))
-    .filter(user => user.id !== currentUserId);
+    .map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 export const followUser = async (currentUserId: string, targetUserId: string) => {

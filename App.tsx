@@ -290,13 +290,11 @@ const PetProfilePage: React.FC = () => {
             const code = jsQR(imageData.data, imageData.width, imageData.height);
             if (code) {
               const url = code.data;
-              // Extract pet ID from URL format: /v/id-string
-              const match = url.match(/\/v\/([a-f0-9-]+)/);
+              const match = url.match(/#\/v\/([a-f0-9-]+)/);
               if (match && match[1]) {
                 identifyPet(match[1]);
               } else {
-                // Try treating the whole decoded data as ID if no URL structure
-                identifyPet(url);
+                alert("Invalid SSP Tag QR Code. Please scan an official tag.");
               }
             } else {
               alert("No QR code detected in this image. Please ensure it is clear.");

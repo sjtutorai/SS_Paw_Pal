@@ -41,7 +41,7 @@ const FindFriends: React.FC = () => {
     setIsLoading(true);
     setNoResults(false);
     try {
-      const users = await searchUsersByEmail(query, user.uid);
+      const users = await searchUsersByEmail(query);
       setResults(users as FoundUser[]);
       if (users.length === 0) {
         setNoResults(true);
@@ -101,7 +101,8 @@ const FindFriends: React.FC = () => {
           const isFollowing = follows.following.includes(foundUser.id);
           const isFollower = follows.followers.includes(foundUser.id);
           const isMutual = isFollowing && isFollower;
-          
+          const isCurrentUser = user?.uid === foundUser.id;
+
           return (
             <div key={foundUser.id} className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between gap-4 transition-all hover:shadow-lg hover:border-indigo-100">
               <div className="flex items-center gap-4">
@@ -114,26 +115,32 @@ const FindFriends: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {isMutual && (
-                    <button
-                        onClick={() => handleMessageUser(foundUser.id)}
-                        className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all"
-                        title="Message"
-                    >
-                        <MessageSquare size={20} />
-                    </button>
+                {isMutual && !isCurrentUser && (
+                  <button
+                    onClick={() => handleMessageUser(foundUser.id)}
+                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all"
+                    title="Message"
+                  >
+                    <MessageSquare size={20} />
+                  </button>
                 )}
-                <button
-                  onClick={() => handleFollowToggle(foundUser.id, isFollowing)}
-                  className={`px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
-                    isFollowing
-                      ? 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
+                {!isCurrentUser ? (
+                  <button
+                    onClick={() => handleFollowToggle(foundUser.id, isFollowing)}
+                    className={`px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
+                      isFollowing
+                        ? 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
+                  >
+                    {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </button>
+                ) : (
+                  <div className="px-5 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-500">
+                    This is you
+                  </div>
+                )}
               </div>
             </div>
           );
