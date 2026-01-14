@@ -337,17 +337,32 @@ const Settings: React.FC = () => {
               <button
                 key={theme.color}
                 onClick={() => changeTheme(theme.color)}
-                className={`group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] transition-all duration-300 ${
+                className={`group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] transition-all duration-300 w-28 ${
                   currentTheme === theme.color ? 'bg-slate-50 ring-2 ring-slate-100 scale-105 shadow-xl' : 'hover:bg-slate-50'
                 }`}
               >
-                <div 
-                  className={`w-16 h-16 rounded-[2rem] shadow-lg transition-all duration-500 flex items-center justify-center ${
+                <div
+                  className={`w-full h-20 rounded-[2rem] shadow-lg transition-all duration-500 flex flex-col items-center justify-center gap-2 p-2 relative overflow-hidden ${
                     currentTheme === theme.color ? 'scale-110' : ''
                   }`}
-                  style={{ backgroundColor: theme.color }}
+                  style={{ backgroundColor: theme.color + '20' }}
                 >
-                  {currentTheme === theme.color && <Check size={32} className="text-white animate-in zoom-in" />}
+                  <div 
+                    className="w-full h-6 rounded-md text-white text-[9px] font-black flex items-center justify-center shadow-inner"
+                    style={{ backgroundColor: theme.color }}
+                  >
+                    ACCENT
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div 
+                      className="w-7 h-7 rounded-md p-0.5 shadow-inner"
+                      style={{ backgroundColor: theme.color }}
+                    >
+                      <div className="w-full h-full bg-white rounded-sm"></div>
+                    </div>
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.color }}></div>
+                  </div>
+                  {currentTheme === theme.color && <div className="absolute top-2 right-2 p-1 bg-white rounded-full"><Check size={12} className="text-slate-800" /></div>}
                 </div>
                 <span className={`text-[10px] font-black uppercase tracking-widest ${
                   currentTheme === theme.color ? 'text-theme' : 'text-slate-400'
@@ -357,9 +372,13 @@ const Settings: React.FC = () => {
               </button>
             ))}
             
-            <label className="group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] hover:bg-slate-50 cursor-pointer transition-all">
-              <div className="w-16 h-16 rounded-[2rem] shadow-lg bg-gradient-to-tr from-rose-500 via-indigo-500 to-emerald-500 flex items-center justify-center transition-all group-hover:rotate-12">
-                <Plus size={32} className="text-white" />
+            <label className="group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] hover:bg-slate-50 cursor-pointer transition-all w-28">
+              <div
+                className="w-full h-20 rounded-[2rem] shadow-lg bg-gradient-to-tr from-rose-50 via-indigo-50 to-emerald-50 flex items-center justify-center transition-all group-hover:scale-105"
+              >
+                <div className="p-3 bg-white rounded-full shadow-inner">
+                  <Plus size={24} className="text-slate-400" />
+                </div>
               </div>
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Custom</span>
               <input 
@@ -396,7 +415,7 @@ const Settings: React.FC = () => {
                   className="w-full h-14 rounded-full flex items-center px-3 relative overflow-hidden shadow-lg transition-all duration-500"
                   style={{ backgroundColor: theme.color }}
                 >
-                  <div className="w-1.5 h-6 rounded-full bg-theme absolute left-2.5"></div>
+                  <div className="w-1.5 h-6 rounded-full bg-theme absolute left-2.5 transition-colors"></div>
                   <span className="text-white font-black text-sm ml-5">Aa</span>
                   {currentSurface === theme.color && <Check size={18} className="text-white absolute right-2.5 animate-in zoom-in" />}
                 </div>
@@ -409,7 +428,8 @@ const Settings: React.FC = () => {
             ))}
             
             <label className="group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] hover:bg-slate-50 cursor-pointer transition-all w-28">
-              <div className="w-full h-14 rounded-full shadow-lg bg-gradient-to-br from-slate-400 to-slate-900 flex items-center justify-center transition-all group-hover:rotate-12">
+              <div className="w-full h-14 rounded-full shadow-lg bg-gradient-to-br from-slate-400 to-slate-900 flex items-center justify-center transition-all group-hover:rotate-12 relative px-3">
+                <div className="w-1.5 h-6 rounded-full bg-theme absolute left-2.5 transition-colors"></div>
                 <Plus size={24} className="text-white" />
               </div>
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Custom</span>
