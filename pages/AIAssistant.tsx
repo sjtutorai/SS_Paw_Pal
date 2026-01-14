@@ -1,250 +1,296 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bot, 
   Stethoscope, 
-  Brain, 
-  Activity, 
-  AlertCircle, 
-  ChevronRight, 
+  Send, 
   Loader2,
-  CheckCircle2,
-  FileText,
-  Zap,
-  ShieldAlert,
   ArrowLeft,
   RefreshCcw,
   ExternalLink,
-  Search
+  Search,
+  User as UserIcon,
+  Sparkles,
+  AlertTriangle,
+  Info,
+  ChevronDown,
+  Trash2
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { useAuth } from '../context/AuthContext';
 import { PetProfile } from '../types';
 
+interface Message {
+  role: 'user' | 'model';
+  text: string;
+  grounding?: any[];
+  timestamp: Date;
+}
+
 const AIAssistant: React.FC = () => {
   const { user } = useAuth();
   const [pet, setPet] = useState<PetProfile | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [report, setReport] = useState<string | null>(null);
-  const [groundingChunks, setGroundingChunks] = useState<any[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState({
-    type: 'Health',
-    urgency: 'Routine',
-    details: '',
-    symptoms: [] as string[]
-  });
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const commonSymptoms = [
-    'Loss of Appetite', 'Lethargy', 'Itching/Biting', 'Coughing', 
-    'Vomiting', 'Diarrhea', 'Excessive Thirst', 'Limping', 
-    'Anxiety', 'Aggression'
+  const QUICK_SYMPTOMS = [
+    'Appetite Loss', 'Lethargy', 'Itching', 'Coughing', 
+    'Vomiting', 'Diarrhea', 'Limping', 'Anxiety'
   ];
 
   useEffect(() => {
     const saved = localStorage.getItem(`ssp_pets_${user?.uid}`);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.length > 0) setPet(parsed[0]);
+      if (parsed.length > 0) {
+        setPet(parsed[0]);
+        // Initial greeting
+        setMessages([{
+          role: 'model',
+          text: `Hello! I'm your AI Triage Assistant. I've loaded ${parsed[0].name}'s profile (${parsed[0].breed}). How can I help you today?`,
+          timestamp: new Date()
+        }]);
+      } else {
+        setMessages([{
+          role: 'model',
+          text: "Hello! I'm your AI Triage Assistant. Please register a pet in the Pet Profile section for a more personalized analysis, but feel free to ask any general health questions now!",
+          timestamp: new Date()
+        }]);
+      }
     }
   }, [user]);
 
-  const toggleSymptom = (s: string) => {
-    setFormData(prev => ({
-      ...prev,
-      symptoms: prev.symptoms.includes(s) 
-        ? prev.symptoms.filter(item => item !== s) 
-        : [...prev.symptoms, s]
-    }));
-  };
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
-  const handleConsultation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.details && formData.symptoms.length === 0) return;
-    
+  const handleSendMessage = async (textOverride?: string) => {
+    const messageText = textOverride || input;
+    if (!messageText.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      role: 'user',
+      text: messageText,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
     setIsLoading(true);
-    setErrorMessage(null);
-    setReport(null);
-    setGroundingChunks([]);
-    
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const petContext = pet ? `
-        PET PROFILE CONTEXT:
+        PRIMARY PATIENT CONTEXT:
+        - Name: ${pet.name}
         - Species: ${pet.species}
         - Breed: ${pet.breed}
         - Age: ${pet.ageYears}y ${pet.ageMonths}m
-        - Health History: ${pet.healthNotes || 'None'}
-      ` : 'Minimal pet data available.';
+        - History: ${pet.healthNotes || 'None'}
+      ` : 'No specific pet profile selected.';
 
-      const prompt = `
-        DEEP CARE ANALYSIS REQUEST:
-        ${petContext}
-        Inquiry Category: ${formData.type}
-        Urgency: ${formData.urgency}
-        Symptoms: ${formData.symptoms.join(', ') || 'General'}
-        Observations: ${formData.details}
-
-        Generate a triage report using Google Search grounding for up-to-date vet standards.
-        Include sections: ## Executive Summary, ## Potential Context, ## Recommended Steps, ## Red Flags.
-      `;
+      const chatHistory = messages.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
-        contents: prompt,
+        contents: [
+          ...chatHistory,
+          { role: 'user', parts: [{ text: `${petContext}\n\nUser Question: ${messageText}` }] }
+        ],
         config: {
           tools: [{ googleSearch: {} }],
-          systemInstruction: "You are a professional Pet Care Triage Assistant. Use Google Search to verify current veterinary standards. Do not diagnose; provide educational guidance and red flags.",
+          systemInstruction: "You are a professional Pet Care Triage Assistant. Use Google Search grounding to provide verified vet standards. NEVER diagnose; provide educational context, red flags, and triage steps. Keep responses structured and use markdown. If mentioning specific sources, they will be captured in grounding metadata.",
           temperature: 0.7,
         },
       });
 
-      setReport(response.text || "Report generated without text.");
-      setGroundingChunks(response.candidates?.[0]?.groundingMetadata?.groundingChunks || []);
-    } catch (err: any) {
-      console.error("AI Assistant Error:", err);
-      setErrorMessage("Analysis interrupted. Please refine your query and try again.");
+      const modelText = response.text || "I'm sorry, I couldn't process that. Please try again.";
+      const grounding = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+
+      setMessages(prev => [...prev, {
+        role: 'model',
+        text: modelText,
+        grounding,
+        timestamp: new Date()
+      }]);
+    } catch (err) {
+      console.error("AI Error:", err);
+      setMessages(prev => [...prev, {
+        role: 'model',
+        text: "I encountered a connection issue. Please check your internet and try again.",
+        timestamp: new Date()
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const clearChat = () => {
+    if (confirm("Clear consultation history?")) {
+      setMessages([{
+        role: 'model',
+        text: `Consultation reset. How can I help ${pet?.name || 'your pet'} now?`,
+        timestamp: new Date()
+      }]);
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto space-y-12 animate-fade-in pb-20">
-      {report || errorMessage ? (
-        <div className="space-y-8 animate-fade-in">
-          <button 
-            onClick={() => { setReport(null); setErrorMessage(null); }}
-            className="group flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-bold transition-all"
-          >
-            <ArrowLeft size={18} /> New Consultation
-          </button>
-
-          <div className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden">
-            <div className={`${errorMessage ? 'bg-rose-600' : 'bg-theme'} p-10 text-white flex justify-between items-center`}>
-              <div className="flex items-center gap-6">
-                <div className="p-4 bg-white/20 rounded-3xl backdrop-blur-xl">
-                  {errorMessage ? <ShieldAlert size={40} /> : <FileText size={40} />}
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black tracking-tight">{errorMessage ? 'Error' : 'Triage Report'}</h2>
-                  <p className="text-white/80 font-medium">Context: {pet?.name || 'Companion'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-10 md:p-16">
-              {errorMessage ? (
-                <div className="text-center py-10">
-                  <p className="text-rose-600 font-bold">{errorMessage}</p>
-                  <button onClick={handleConsultation} className="mt-6 bg-slate-900 text-white px-8 py-4 rounded-2xl">Retry</button>
-                </div>
-              ) : (
-                <div className="prose prose-indigo max-w-none">
-                  <div className="text-slate-800 space-y-6">
-                    {report?.split('\n').map((line, i) => {
-                      const trimmed = line.trim();
-                      if (trimmed.startsWith('##')) return <h3 key={i} className="text-2xl font-black text-slate-900 mt-8 mb-4">{trimmed.replace('##', '')}</h3>;
-                      if (trimmed.startsWith('*') || trimmed.startsWith('-')) return <li key={i} className="ml-4 mb-2 font-medium text-slate-600 list-disc">{trimmed.replace(/^[\*\-]\s/, '')}</li>;
-                      return <p key={i} className="text-slate-600 leading-relaxed text-lg">{trimmed}</p>;
-                    })}
-                  </div>
-
-                  {/* Grounding Sources */}
-                  {groundingChunks.length > 0 && (
-                    <div className="mt-16 pt-10 border-t border-slate-100 space-y-6">
-                      <div className="flex items-center gap-3">
-                        <Search size={20} className="text-theme" />
-                        <h4 className="font-black text-slate-800 uppercase tracking-widest text-xs">Verified Sources & Grounding</h4>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {groundingChunks.map((chunk, idx) => chunk.web && (
-                          <a 
-                            key={idx} 
-                            href={chunk.web.uri} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-theme hover:bg-white transition-all group flex items-start justify-between gap-4"
-                          >
-                            <span className="text-xs font-bold text-slate-600 line-clamp-2">{chunk.web.title || 'Medical Source'}</span>
-                            <ExternalLink size={14} className="text-slate-300 group-hover:text-theme shrink-0" />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+    <div className="flex flex-col h-[calc(100vh-140px)] max-w-5xl mx-auto animate-fade-in relative">
+      {/* Header */}
+      <div className="bg-white border border-slate-100 rounded-t-[3rem] p-6 shadow-sm flex items-center justify-between z-10">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-theme text-white rounded-2xl shadow-lg shadow-theme/20">
+            <Bot size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">AI Health Support</h2>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gemini 3 Pro + Search Grounding</p>
             </div>
           </div>
         </div>
-      ) : (
-        <form onSubmit={handleConsultation} className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-2 space-y-10">
-            <div className="bg-white rounded-[3.5rem] p-10 md:p-14 border border-slate-100 shadow-sm space-y-12">
-              <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-theme-light rounded-2xl text-theme"><Stethoscope size={24} /></div>
-                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Consultation Details</h3>
-                </div>
-                <textarea 
-                  required
-                  value={formData.details}
-                  onChange={e => setFormData({...formData, details: e.target.value})}
-                  placeholder="Describe your observations..."
-                  className="w-full h-64 bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 text-lg font-medium focus:ring-8 focus:ring-theme/10 outline-none transition-all resize-none shadow-inner"
-                />
-              </section>
+        <button 
+          onClick={clearChat}
+          className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all"
+          title="Clear History"
+        >
+          <Trash2 size={20} />
+        </button>
+      </div>
 
-              <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-rose-50 rounded-2xl text-rose-600"><Activity size={24} /></div>
-                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Observed Symptoms</h3>
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 bg-slate-50/30 custom-scrollbar border-x border-slate-100">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
+            <div className={`flex gap-4 max-w-[85%] md:max-w-[75%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm border ${
+                msg.role === 'user' ? 'bg-white border-slate-200' : 'bg-theme border-theme text-white'
+              }`}>
+                {msg.role === 'user' ? (
+                  user?.photoURL ? <img src={user.photoURL} className="w-full h-full object-cover rounded-xl" /> : <UserIcon size={20} className="text-slate-400" />
+                ) : <Bot size={20} />}
+              </div>
+              
+              <div className="space-y-4">
+                <div className={`p-6 rounded-[2rem] shadow-sm relative ${
+                  msg.role === 'user' 
+                  ? 'bg-theme text-white rounded-tr-none' 
+                  : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                }`}>
+                  <div className="prose prose-sm prose-slate max-w-none prose-p:leading-relaxed">
+                    {msg.text.split('\n').map((line, i) => {
+                      const trimmed = line.trim();
+                      if (trimmed.startsWith('##')) return <h4 key={i} className={`text-lg font-black mt-4 mb-2 ${msg.role === 'user' ? 'text-white' : 'text-slate-900'}`}>{trimmed.replace('##', '')}</h4>;
+                      if (trimmed.startsWith('*') || trimmed.startsWith('-')) return <li key={i} className="ml-4 mb-1 font-medium">{trimmed.replace(/^[\*\-]\s/, '')}</li>;
+                      return <p key={i} className="mb-2 font-medium">{trimmed}</p>;
+                    })}
+                  </div>
+                  <span className={`text-[8px] font-black uppercase tracking-widest block mt-3 opacity-40 ${msg.role === 'user' ? 'text-white' : 'text-slate-400'}`}>
+                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  {commonSymptoms.map(s => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => toggleSymptom(s)}
-                      className={`px-6 py-3 rounded-full font-bold text-sm transition-all border ${
-                        formData.symptoms.includes(s) 
-                        ? 'bg-theme border-theme text-white shadow-lg' 
-                        : 'bg-white border-slate-200 text-slate-500 hover:border-theme'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
 
-            <button 
-              type="submit"
-              disabled={isLoading || (!formData.details && formData.symptoms.length === 0)}
-              className="w-full py-8 bg-theme text-white rounded-[3rem] font-black text-2xl flex items-center justify-center gap-4 hover:bg-theme-hover transition-all shadow-2xl active:scale-95 disabled:opacity-50"
-            >
-              {isLoading ? <Loader2 className="animate-spin" size={32} /> : <>Generate Analysis <ChevronRight size={32} /></>}
-            </button>
-          </div>
-
-          <div className="space-y-8">
-            <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-8">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Model Config</h4>
-              <div className="p-4 bg-theme-light rounded-2xl space-y-2">
-                <div className="flex items-center gap-2 text-[10px] text-theme font-bold uppercase tracking-widest">
-                  <Zap size={12} /> Gemini 3 Pro
-                </div>
-                <p className="font-black text-slate-800">Grounding Enabled</p>
-                <p className="text-[10px] text-slate-500 font-medium">Verified by Google Search</p>
+                {/* Grounding Links */}
+                {msg.grounding && msg.grounding.length > 0 && (
+                  <div className="flex flex-wrap gap-2 animate-in fade-in duration-700">
+                    {msg.grounding.map((chunk, gIdx) => chunk.web && (
+                      <a 
+                        key={gIdx} 
+                        href={chunk.web.uri} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px] font-black text-theme uppercase tracking-wider hover:bg-theme hover:text-white transition-all shadow-sm"
+                      >
+                        <Search size={10} /> {chunk.web.title?.slice(0, 20) || 'Source'}...
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
+        ))}
+        
+        {isLoading && (
+          <div className="flex justify-start animate-pulse">
+            <div className="flex gap-4 max-w-[75%]">
+              <div className="w-10 h-10 rounded-xl flex-shrink-0 bg-theme flex items-center justify-center text-white">
+                <Bot size={20} />
+              </div>
+              <div className="bg-white border border-slate-100 p-6 rounded-[2rem] rounded-tl-none shadow-sm flex items-center gap-3">
+                <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-theme rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 bg-theme rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                  <span className="w-1.5 h-1.5 bg-theme rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Consulting Knowledge Base...</span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Bar */}
+      <div className="bg-white border border-slate-100 rounded-b-[3rem] p-6 shadow-xl z-10">
+        {messages.length < 3 && (
+          <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar-hide">
+            {QUICK_SYMPTOMS.map(s => (
+              <button
+                key={s}
+                onClick={() => handleSendMessage(s)}
+                className="whitespace-nowrap px-4 py-2 bg-slate-50 border border-slate-100 rounded-full text-xs font-bold text-slate-500 hover:border-theme hover:text-theme hover:bg-white transition-all"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        
+        <form 
+          onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
+          className="flex items-center gap-4"
+        >
+          <div className="flex-1 relative">
+            <input 
+              type="text" 
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder={`Ask about ${pet?.name || 'your pet'}...`}
+              className="w-full bg-slate-50 border-none rounded-[2rem] py-5 px-8 text-sm font-medium focus:ring-4 focus:ring-theme/10 transition-all outline-none"
+              disabled={isLoading}
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+               <Sparkles size={16} className="text-theme opacity-30" />
+            </div>
+          </div>
+          <button 
+            type="submit"
+            disabled={!input.trim() || isLoading}
+            className="w-14 h-14 bg-theme text-white rounded-full flex items-center justify-center shadow-xl shadow-theme/20 hover:bg-theme-hover active:scale-90 transition-all disabled:opacity-50"
+          >
+            {isLoading ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} className="translate-x-0.5 -translate-y-0.5" />}
+          </button>
         </form>
-      )}
+        
+        <div className="flex items-center justify-center gap-4 mt-4 opacity-40">
+           <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+             <AlertTriangle size={10} /> Educational guidance only
+           </div>
+           <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+           <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+             <Info size={10} /> Consult a local vet for emergencies
+           </div>
+        </div>
+      </div>
     </div>
   );
 };
