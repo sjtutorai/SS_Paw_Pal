@@ -388,17 +388,17 @@ const Settings: React.FC = () => {
               <button
                 key={theme.color}
                 onClick={() => changeSurface(theme.color)}
-                className={`group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] transition-all duration-300 ${
+                className={`group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] transition-all duration-300 w-28 ${
                   currentSurface === theme.color ? 'bg-slate-50 ring-2 ring-slate-100 scale-105 shadow-xl' : 'hover:bg-slate-50'
                 }`}
               >
                 <div 
-                  className={`w-16 h-16 rounded-[2rem] shadow-lg transition-all duration-500 flex items-center justify-center ${
-                    currentSurface === theme.color ? 'scale-110' : ''
-                  }`}
+                  className="w-full h-14 rounded-full flex items-center px-3 relative overflow-hidden shadow-lg transition-all duration-500"
                   style={{ backgroundColor: theme.color }}
                 >
-                  {currentSurface === theme.color && <Check size={32} className="text-white animate-in zoom-in" />}
+                  <div className="w-1.5 h-6 rounded-full bg-theme absolute left-2.5"></div>
+                  <span className="text-white font-black text-sm ml-5">Aa</span>
+                  {currentSurface === theme.color && <Check size={18} className="text-white absolute right-2.5 animate-in zoom-in" />}
                 </div>
                 <span className={`text-[10px] font-black uppercase tracking-widest ${
                   currentSurface === theme.color ? 'text-slate-900' : 'text-slate-400'
@@ -408,9 +408,9 @@ const Settings: React.FC = () => {
               </button>
             ))}
             
-            <label className="group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] hover:bg-slate-50 cursor-pointer transition-all">
-              <div className="w-16 h-16 rounded-[2rem] shadow-lg bg-gradient-to-br from-slate-400 to-slate-900 flex items-center justify-center transition-all group-hover:rotate-12">
-                <Plus size={32} className="text-white" />
+            <label className="group relative flex flex-col items-center gap-3 p-3 rounded-[2.5rem] hover:bg-slate-50 cursor-pointer transition-all w-28">
+              <div className="w-full h-14 rounded-full shadow-lg bg-gradient-to-br from-slate-400 to-slate-900 flex items-center justify-center transition-all group-hover:rotate-12">
+                <Plus size={24} className="text-white" />
               </div>
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Custom</span>
               <input 
