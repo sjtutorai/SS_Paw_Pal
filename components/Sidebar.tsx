@@ -145,11 +145,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                         ${isCollapsed && !isOpen ? 'md:justify-center px-0' : ''}
                       `}
                     >
-                      {/* Active Indicator Bar - Refined to match screenshot stripe */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[5px] h-7 bg-theme rounded-r-full shadow-[0_0_10px_var(--theme-color)]" />
-                      )}
-
                       <item.icon size={22} className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:rotate-3'}`} />
                       
                       {(!isCollapsed || isOpen) ? (
