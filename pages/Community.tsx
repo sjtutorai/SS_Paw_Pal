@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Heart, 
@@ -63,30 +62,43 @@ const Community: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
 
+  // Effect for loading the user's primary pet for posting
   useEffect(() => {
-    const savedPet = localStorage.getItem(`ssp_pets_${user?.uid}`);
-    if (savedPet) {
-      const parsed = JSON.parse(savedPet);
-      if (parsed.length > 0) setPet(parsed[0]);
+    if (user?.uid) {
+      const savedPet = localStorage.getItem(`ssp_pets_${user.uid}`);
+      if (savedPet) {
+        try {
+          const parsed = JSON.parse(savedPet);
+          if (parsed.length > 0) setPet(parsed[0]);
+        } catch (e) {
+          console.error("Failed to parse pet data from localStorage", e);
+        }
+      }
     }
+  }, [user]);
 
+  // Effect for fetching global community posts
+  useEffect(() => {
+    setLoading(true);
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedPosts = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as Post[];
       
       setPosts(fetchedPosts);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching posts:", error);
+      setPosts([]); // Clear posts on error to avoid showing stale data
       setLoading(false);
     });
 
+    // Cleanup subscription on component unmount
     return () => unsubscribe();
-  }, [user]);
+  }, []); // Empty dependency array ensures this runs once, which is correct for a global feed within a protected route
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
