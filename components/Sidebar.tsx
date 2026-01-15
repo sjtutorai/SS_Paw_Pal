@@ -15,11 +15,11 @@ import {
   Sparkles,
   Send,
   User as UserIcon,
-  ShieldCheck,
   LayoutGrid,
-  UserSearch
+  UserSearch,
+  Activity
 } from 'lucide-react';
-import { AppRoutes, NavItem } from '../types';
+import { AppRoutes } from '../types';
 import { logout } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -37,26 +37,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
   const menuGroups = [
     {
-      title: "Main Menu",
+      title: "Navigation",
       items: [
         { label: 'Dashboard', path: AppRoutes.HOME, icon: Home },
-        { label: 'AI Support', path: AppRoutes.AI_ASSISTANT, icon: MessageSquare },
-        { label: 'Daily Care', path: AppRoutes.PET_CARE, icon: Sparkles },
+        { label: 'AI Assistant', path: AppRoutes.AI_ASSISTANT, icon: MessageSquare },
+        { label: 'Care Plans', path: AppRoutes.PET_CARE, icon: Activity },
       ]
     },
     {
-      title: "Community",
+      title: "Social",
       items: [
-        { label: 'Social Feed', path: AppRoutes.CREATE_POST, icon: PlusSquare },
-        { label: 'Messages', path: AppRoutes.CHAT, icon: Send },
-        { label: 'Find Friends', path: AppRoutes.FIND_FRIENDS, icon: UserSearch },
+        { label: 'Feed', path: AppRoutes.CREATE_POST, icon: LayoutGrid },
+        { label: 'Direct Messages', path: AppRoutes.CHAT, icon: Send },
+        { label: 'Discover', path: AppRoutes.FIND_FRIENDS, icon: UserSearch },
       ]
     },
     {
       title: "Management",
       items: [
-        { label: 'Health Hub', path: AppRoutes.HEALTH_CHECKUP, icon: Stethoscope },
-        { label: 'Pet Profile', path: AppRoutes.PET_PROFILE, icon: Dog },
+        { label: 'Medical History', path: AppRoutes.PET_PROFILE, icon: Stethoscope },
+        { label: 'Profiles', path: AppRoutes.PET_PROFILE, icon: Dog },
       ]
     }
   ];
@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
       await logout();
       navigate('/login', { replace: true });
     } catch (error) {
-      console.error("Sidebar logout error:", error);
+      console.error("Logout error:", error);
     }
   };
 
@@ -76,138 +76,108 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
     <>
       {/* Mobile Backdrop */}
       <div 
-        className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] transition-opacity duration-500 md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[60] md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Sidebar Container */}
+      {/* Sidebar Main */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[70] bg-white/80 backdrop-blur-2xl border-r border-slate-200/50 
-        transform transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+        fixed inset-y-0 left-0 z-[70] bg-white border-r border-slate-200 
+        transform transition-all duration-300 ease-in-out
         md:relative md:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        ${isCollapsed ? 'md:w-24' : 'lg:w-[20vw] md:w-72'}
-        flex flex-col shadow-[10px_0_40px_rgba(0,0,0,0.04)]
+        ${isCollapsed ? 'md:w-20' : 'md:w-64 lg:w-72'}
+        flex flex-col
       `}>
         
-        {/* Logo Section */}
-        <div className="h-24 flex items-center px-6 mb-4">
-          <Link 
-            to={AppRoutes.HOME}
-            className={`flex items-center gap-4 transition-all duration-500 ${isCollapsed && !isOpen ? 'justify-center w-full' : ''}`}
-          >
-            <div className="w-12 h-12 bg-white rounded-2xl p-1 shadow-lg flex-shrink-0 flex items-center justify-center transition-transform hover:rotate-6 active:scale-90 border border-slate-100">
+        {/* Header/Logo */}
+        <div className="h-20 flex items-center px-5 mb-4 shrink-0">
+          <Link to={AppRoutes.HOME} className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-slate-50 rounded-xl p-1.5 border border-slate-100 flex-shrink-0 shadow-sm">
               <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
             </div>
-            {(!isCollapsed || isOpen) && (
-              <div className="overflow-hidden animate-in fade-in slide-in-from-left-2">
-                <span className="font-black text-slate-900 whitespace-nowrap tracking-tighter text-xl leading-tight block">SS Paw Pal</span>
-              </div>
+            {!isCollapsed && (
+              <span className="font-bold text-slate-800 text-lg tracking-tight whitespace-nowrap overflow-hidden transition-all duration-300">
+                Paw Pal <span className="text-theme font-black">Pro</span>
+              </span>
             )}
           </Link>
-          
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="md:hidden absolute top-7 right-4 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-          >
-            <X size={24} />
+          <button onClick={() => setIsOpen(false)} className="md:hidden ml-auto p-2 text-slate-400 hover:text-slate-600">
+            <X size={20} />
           </button>
         </div>
 
-        {/* Navigation Groups */}
-        <nav className="flex-1 px-4 space-y-8 overflow-y-auto custom-scrollbar">
-          {menuGroups.map((group, gIdx) => (
-            <div key={gIdx} className="space-y-2">
-              {(!isCollapsed || isOpen) && (
-                <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-4 animate-in fade-in duration-700">
+        {/* Navigation Section */}
+        <nav className="flex-1 px-3 space-y-8 overflow-y-auto custom-scrollbar-hide">
+          {menuGroups.map((group, idx) => (
+            <div key={idx} className="space-y-1">
+              {!isCollapsed && (
+                <h3 className="px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-2">
                   {group.title}
                 </h3>
               )}
-              
-              <div className="space-y-1.5">
-                {group.items.map((item) => {
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setIsOpen(false)}
-                      className={`
-                        group relative flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300
-                        ${isActive 
-                          ? 'bg-theme text-white shadow-xl shadow-theme/25' 
-                          : 'text-slate-500 hover:bg-theme/5 hover:text-theme'}
-                        ${isCollapsed && !isOpen ? 'md:justify-center' : ''}
-                      `}
-                    >
-                      <item.icon size={20} className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:rotate-3'}`} />
-                      
-                      {(!isCollapsed || isOpen) ? (
-                        <span className="text-sm font-bold tracking-tight whitespace-nowrap">{item.label}</span>
-                      ) : (
-                        <div className="absolute left-full ml-4 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-all z-[100] translate-x-[-10px] group-hover:translate-x-0 whitespace-nowrap shadow-xl">
-                          {item.label}
-                          <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
-                        </div>
-                      )}
-
-                      {isActive && !isCollapsed && (
-                        <div className="absolute right-3 w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setIsOpen(false)}
+                    className={`
+                      group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200
+                      ${isActive 
+                        ? 'bg-theme text-white shadow-md shadow-theme/10' 
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
+                      ${isCollapsed ? 'justify-center' : ''}
+                    `}
+                  >
+                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                    {!isCollapsed && (
+                      <span className="text-sm font-semibold tracking-tight whitespace-nowrap">{item.label}</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </nav>
 
-        {/* Bottom Identity Hub */}
-        <div className="p-4 space-y-4">
-          <div className="h-px bg-slate-100 mx-2" />
-          
-          <div className={`p-2 rounded-[2rem] bg-slate-50 border border-slate-100/50 flex flex-col gap-2 transition-all duration-300`}>
+        {/* Profile/Footer Section */}
+        <div className="p-3 mt-auto">
+          <div className="bg-slate-50 rounded-2xl p-2 space-y-1 border border-slate-100">
             <Link 
               to={AppRoutes.SETTINGS}
-              className={`flex items-center gap-3 p-2 rounded-2xl transition-all hover:bg-white hover:shadow-sm group
-                ${isCollapsed && !isOpen ? 'justify-center' : ''}
-              `}
+              className={`flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all group ${isCollapsed ? 'justify-center' : ''}`}
             >
-              <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-slate-200 flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
+              <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200 shadow-sm shrink-0">
                 {user?.photoURL ? (
                   <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300"><UserIcon size={20} /></div>
+                  <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400"><UserIcon size={16} /></div>
                 )}
               </div>
-              {(!isCollapsed || isOpen) && (
-                <div className="min-w-0 overflow-hidden">
-                  <p className="text-xs font-black text-slate-800 truncate leading-tight">{user?.displayName || 'Pet Parent'}</p>
-                  <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-widest mt-0.5">Settings</p>
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate leading-none">{user?.displayName || 'Parent'}</p>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1 truncate">Settings</p>
                 </div>
               )}
             </Link>
 
             <button
               onClick={handleLogout}
-              className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-slate-400 hover:text-rose-600 hover:bg-rose-50 group
-                ${isCollapsed && !isOpen ? 'justify-center' : ''}
-              `}
+              className={`w-full flex items-center gap-3 p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50/50 transition-all ${isCollapsed ? 'justify-center' : ''}`}
             >
-              <LogOut size={20} className="transition-transform group-hover:-translate-x-1" />
-              {(!isCollapsed || isOpen) && <span className="text-xs font-black uppercase tracking-widest">Sign Out</span>}
+              <LogOut size={18} />
+              {!isCollapsed && <span className="text-xs font-bold">Sign Out</span>}
             </button>
           </div>
         </div>
 
-        {/* Collapse Toggle Button (Desktop Only) */}
+        {/* Desktop Collapse Toggle */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`
-            hidden md:flex absolute -right-4 top-10 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-lg 
-            items-center justify-center text-slate-400 hover:text-theme transition-all z-[80] 
-            hover:scale-110 active:scale-90
-          `}
+          className="hidden md:flex absolute -right-3.5 top-20 w-7 h-7 bg-white border border-slate-200 rounded-full shadow-md items-center justify-center text-slate-400 hover:text-theme transition-all z-[80]"
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
