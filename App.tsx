@@ -291,7 +291,7 @@ const PetProfilePage: React.FC = () => {
             if (code) {
               const url = code.data;
               // Extract pet ID from URL format: /v/id-string
-              const match = url.match(/\/v\/([a-zA-Z0-9-]+)/);
+              const match = url.match(/\/v\/([a-f0-9-]+)/);
               if (match && match[1]) {
                 identifyPet(match[1]);
               } else {
@@ -359,13 +359,7 @@ const PetProfilePage: React.FC = () => {
     e.preventDefault();
     setError(null);
     if (!newPet.birthday || new Date(newPet.birthday) > new Date()) { setError("Birth date cannot be in the future."); return; }
-    
-    const ownerInitial = user?.displayName?.charAt(0).toUpperCase() || 'U';
-    const petInitial = newPet.name?.charAt(0).toUpperCase() || 'P';
-    const dob = newPet.birthday ? newPet.birthday.replace(/-/g, '') : new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const randomSuffix = Math.random().toString(36).substring(2, 6);
-    const id = `${ownerInitial}${petInitial}${dob}-${randomSuffix}`;
-
+    const id = crypto.randomUUID();
     const { years, months } = calculateAge(newPet.birthday || '');
     const qrCodeUrl = generateQRCode(id);
     const completePet: PetProfile = { ...newPet as PetProfile, id, ownerId: user?.uid || '', ownerName: user?.displayName || 'Pet Parent', qrCodeUrl, ageYears: String(years), ageMonths: String(months), weightHistory: [], vaccinations: [], isPublic: true };
@@ -587,7 +581,7 @@ const PetProfilePage: React.FC = () => {
                     <input type="file" ref={qrInputRef} className="hidden" accept="image/*" onChange={handleQRUpload} />
                   </button>
                   <button 
-                    onClick={() => { const id = prompt("Enter the full SSP-ID from the tag (e.g., SB20230510-abcd):"); if(id) identifyPet(id); }}
+                    onClick={() => { const id = prompt("Enter SSP Tag ID (Found on the physical tag):"); if(id) identifyPet(id); }}
                     className="flex flex-col items-center gap-3 p-8 bg-slate-50 rounded-[2rem] border border-slate-200 hover:border-theme hover:bg-white transition-all group shadow-sm"
                   >
                     <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
@@ -692,7 +686,7 @@ const PetProfilePage: React.FC = () => {
                 </div>
                 <div className="w-full p-4 bg-slate-50 rounded-[2rem] flex flex-col items-center gap-4 border border-slate-100/50">
                   <img src={generateQRCode(selectedPet.id)} className="w-40 h-40 bg-white p-2 rounded-2xl shadow-inner border border-slate-100" alt="QR ID" />
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-mono">SSP-ID: {selectedPet.id}</div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-mono">SSP-ID: {selectedPet.id.slice(0, 8).toUpperCase()}</div>
                 </div>
               </div>
             </div>

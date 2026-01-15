@@ -42,6 +42,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+/**
+ * Checks if a username is already taken by a different user.
+ */
 export const isUsernameTaken = async (username: string, excludeUid: string) => {
   if (!username) return false;
   const q = query(
@@ -51,9 +54,14 @@ export const isUsernameTaken = async (username: string, excludeUid: string) => {
   );
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return false;
+  
+  // Taken if the existing document belongs to a different UID
   return querySnapshot.docs[0].id !== excludeUid;
 };
 
+/**
+ * Force-saves user data to Firestore. 
+ */
 export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
   const userRef = doc(db, "users", user.uid);
   const data = {
@@ -75,6 +83,9 @@ export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
   }
 };
 
+/**
+ * Syncs pet profile to global Firestore collection for QR public access.
+ */
 export const syncPetToDb = async (pet: any) => {
   const petRef = doc(db, "pets", pet.id);
   await setDoc(petRef, {
@@ -84,6 +95,7 @@ export const syncPetToDb = async (pet: any) => {
 };
 
 export const getPetById = async (id: string) => {
+  if (!id) return null;
   const petRef = doc(db, "pets", id);
   const snap = await getDoc(petRef);
   return snap.exists() ? snap.data() : null;
@@ -120,6 +132,8 @@ export const sendRegistrationPermissionRequest = async (pet: any, finderName: st
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account consent' });
+  provider.addScope('profile');
+  provider.addScope('email');
   
   try {
     const result = await signInWithPopup(auth, provider);
@@ -232,19 +246,16 @@ export const sendChatMessage = async (chatId: string, senderId: string, text: st
   });
 };
 
-export const searchUsersByUsername = async (usernamePrefix: string, currentUserId: string) => {
-  if (!usernamePrefix) return [];
-  const lowerPrefix = usernamePrefix.toLowerCase().trim();
+export const searchUsersByEmail = async (email: string, currentUserId: string) => {
+  if (!email) return [];
   const q = query(
     collection(db, "users"),
-    where("username", ">=", lowerPrefix),
-    where("username", "<=", lowerPrefix + "\uf8ff"),
-    limit(10)
+    where("email", "==", email.toLowerCase().trim())
   );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() }))
-    .filter((user: any) => user.id !== currentUserId);
+    .filter(user => user.id !== currentUserId);
 };
 
 export const followUser = async (currentUserId: string, targetUserId: string) => {
@@ -293,6 +304,7 @@ export const onFollowsUpdate = (
 export const checkMutualFollow = async (userId1: string, userId2: string) => {
   const user1Follows2Doc = await getDoc(doc(db, 'users', userId1, 'following', userId2));
   if (!user1Follows2Doc.exists()) return false;
+  
   const user2Follows1Doc = await getDoc(doc(db, 'users', userId2, 'following', userId1));
   return user2Follows1Doc.exists();
 };

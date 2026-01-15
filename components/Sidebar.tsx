@@ -4,18 +4,17 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   Home, 
   MessageSquare, 
+  PlusSquare, 
+  Dog, 
   LogOut, 
   X,
   ChevronLeft,
   ChevronRight,
   Stethoscope,
-  Dog,
-  Settings,
+  Sparkles,
   Send,
   User as UserIcon,
-  LayoutGrid,
-  UserSearch,
-  Activity
+  UserSearch
 } from 'lucide-react';
 import { AppRoutes } from '../types';
 import { logout } from '../services/firebase';
@@ -28,53 +27,6 @@ interface SidebarProps {
   setIsCollapsed: (collapsed: boolean) => void;
 }
 
-const NavItem: React.FC<{
-  item: { label: string; path: string; icon: React.ElementType };
-  isActive: boolean;
-  isCollapsed: boolean;
-  setIsOpen: (open: boolean) => void;
-}> = ({ item, isActive, isCollapsed, setIsOpen }) => {
-  return (
-    <div className="relative">
-      <Link
-        to={item.path}
-        onClick={() => setIsOpen(false)}
-        className={`
-          group flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 w-full
-          ${isActive 
-            ? 'bg-theme text-white shadow-lg shadow-theme/20' 
-            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
-          ${isCollapsed ? 'justify-center' : ''}
-        `}
-      >
-        <div className={`
-          absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-white rounded-r-full
-          transition-all duration-300
-          ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}
-        `}></div>
-        
-        <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="shrink-0 z-10" />
-        
-        {!isCollapsed && (
-          <span className="text-sm font-bold tracking-tight whitespace-nowrap z-10">{item.label}</span>
-        )}
-      </Link>
-      
-      {isCollapsed && (
-        <div className="
-          absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5
-          bg-slate-800 text-white text-xs font-bold rounded-lg shadow-lg
-          opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-300
-          pointer-events-none whitespace-nowrap z-50
-        ">
-          {item.label}
-          <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -85,23 +37,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
       title: "Navigation",
       items: [
         { label: 'Dashboard', path: AppRoutes.HOME, icon: Home },
-        { label: 'AI Assistant', path: AppRoutes.AI_ASSISTANT, icon: MessageSquare },
-        { label: 'Care Plans', path: AppRoutes.PET_CARE, icon: Activity },
+        { label: 'AI Support', path: AppRoutes.AI_ASSISTANT, icon: MessageSquare },
+        { label: 'Daily Care', path: AppRoutes.PET_CARE, icon: Sparkles },
       ]
     },
     {
-      title: "Social",
+      title: "Pet Social",
       items: [
-        { label: 'Feed', path: AppRoutes.CREATE_POST, icon: LayoutGrid },
-        { label: 'Direct Messages', path: AppRoutes.CHAT, icon: Send },
-        { label: 'Discover', path: AppRoutes.FIND_FRIENDS, icon: UserSearch },
+        { label: 'Moments', path: AppRoutes.CREATE_POST, icon: PlusSquare },
+        { label: 'Inbox', path: AppRoutes.CHAT, icon: Send },
+        { label: 'Exploration', path: AppRoutes.FIND_FRIENDS, icon: UserSearch },
       ]
     },
     {
-      title: "Management",
+      title: "Records",
       items: [
-        { label: 'Medical History', path: AppRoutes.HEALTH_CHECKUP, icon: Stethoscope },
-        { label: 'Profiles', path: AppRoutes.PET_PROFILE, icon: Dog },
+        { label: 'Health Hub', path: AppRoutes.HEALTH_CHECKUP, icon: Stethoscope },
+        { label: 'Pet Family', path: AppRoutes.PET_PROFILE, icon: Dog },
       ]
     }
   ];
@@ -111,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
       await logout();
       navigate('/login', { replace: true });
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Sidebar logout error:", error);
     }
   };
 
@@ -119,118 +71,159 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile Backdrop - High Blur */}
       <div 
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[60] transition-all duration-500 md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Sidebar Main */}
+      {/* Slide Navigation Container */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[70] bg-white border-r border-slate-100 
-        transform transition-all duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-[70] bg-white/95 backdrop-blur-3xl border-r border-slate-200/60 
+        transform transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
         md:relative md:translate-x-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        ${isCollapsed ? 'md:w-24' : 'md:w-64 lg:w-72'}
-        flex flex-col
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        ${isCollapsed ? 'md:w-24' : 'lg:w-80 md:w-72'}
+        flex flex-col shadow-[20px_0_80px_-20px_rgba(0,0,0,0.06)]
       `}>
         
-        {/* Header/Logo */}
-        <div className={`h-20 flex items-center shrink-0 ${isCollapsed ? 'justify-center' : 'px-6'}`}>
-          <Link to={AppRoutes.HOME} className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-xl p-1.5 border border-slate-200 flex-shrink-0 shadow-sm">
-              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
+        {/* Branding Section */}
+        <div className="h-28 flex items-center px-6 shrink-0 relative">
+          <Link 
+            to={AppRoutes.HOME}
+            className={`flex items-center gap-4 transition-all duration-500 ${isCollapsed && !isOpen ? 'justify-center w-full' : ''}`}
+          >
+            <div className={`
+              bg-theme rounded-[1.25rem] p-0.5 shadow-2xl shadow-theme/30 flex-shrink-0 flex items-center justify-center transition-all duration-500
+              ${isCollapsed ? 'w-12 h-12' : 'w-14 h-14'}
+              hover:rotate-12 active:scale-90
+            `}>
+              <div className="w-full h-full bg-white rounded-[1rem] p-1.5 flex items-center justify-center">
+                <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
+              </div>
             </div>
-            {!isCollapsed && (
-              <span className="font-bold text-slate-800 text-lg tracking-tight whitespace-nowrap overflow-hidden transition-all duration-300">
-                Paw Pal <span className="text-theme font-black">Pro</span>
-              </span>
+            {(!isCollapsed || isOpen) && (
+              <div className="overflow-hidden animate-in fade-in slide-in-from-left-4 duration-500">
+                <span className="font-black text-slate-900 whitespace-nowrap tracking-tighter text-2xl leading-none block">SS Paw Pal</span>
+                <span className="text-[10px] font-black text-theme uppercase tracking-[0.4em] mt-1 block">Care Engine</span>
+              </div>
             )}
           </Link>
-          <button onClick={() => setIsOpen(false)} className="md:hidden ml-auto p-2 text-slate-400 hover:text-slate-600">
-            <X size={20} />
+          
+          <button 
+            onClick={() => setIsOpen(false)}
+            className="md:hidden absolute top-9 right-4 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+          >
+            <X size={24} />
           </button>
         </div>
 
-        {/* Navigation Section */}
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar-hide">
-          {menuGroups.map((group, idx) => (
-            <React.Fragment key={idx}>
-              {idx > 0 && <hr className={`border-slate-100 transition-all duration-300 ${isCollapsed ? 'mx-4 my-4' : 'mx-2 my-6'}`} />}
-              <div className="space-y-1">
-                {!isCollapsed && (
-                  <h3 className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
-                    {group.title}
-                  </h3>
-                )}
-                {group.items.map((item) => (
-                  <NavItem 
-                    key={item.path}
-                    item={item}
-                    isActive={location.pathname === item.path || (item.path === AppRoutes.PET_PROFILE && location.pathname === AppRoutes.HEALTH_CHECKUP)}
-                    isCollapsed={isCollapsed}
-                    setIsOpen={setIsOpen}
-                  />
-                ))}
+        {/* Scrollable Nav Area */}
+        <nav className="flex-1 px-4 py-6 space-y-10 overflow-y-auto custom-scrollbar-hide">
+          {menuGroups.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-3">
+              {(!isCollapsed || isOpen) && (
+                <h3 className="px-5 text-[9px] font-black uppercase tracking-[0.35em] text-slate-400/80 mb-2 animate-in fade-in duration-1000">
+                  {group.title}
+                </h3>
+              )}
+              
+              <div className="space-y-2">
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setIsOpen(false)}
+                      style={isActive ? { backgroundColor: 'var(--theme-surface)' } : {}}
+                      className={`
+                        group relative flex items-center gap-4 px-6 py-4 rounded-full transition-all duration-300 overflow-hidden
+                        ${isActive 
+                          ? 'text-white shadow-xl' 
+                          : 'text-slate-500 hover:bg-theme-light hover:text-theme'}
+                        ${isCollapsed && !isOpen ? 'md:justify-center px-0' : ''}
+                      `}
+                    >
+                      {/* Active Indicator Bar - Refined to match screenshot stripe */}
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[5px] h-7 bg-theme rounded-r-full shadow-[0_0_10px_var(--theme-color)]" />
+                      )}
+
+                      <item.icon size={22} className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:rotate-3'}`} />
+                      
+                      {(!isCollapsed || isOpen) ? (
+                        <span className="text-[15px] font-bold tracking-tight whitespace-nowrap">{item.label}</span>
+                      ) : (
+                        <div 
+                          style={{ backgroundColor: 'var(--theme-surface)' }}
+                          className="absolute left-full ml-6 px-4 py-2 text-white text-[11px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all z-[100] translate-x-[-15px] group-hover:translate-x-0 whitespace-nowrap shadow-2xl"
+                        >
+                          {item.label}
+                          <div 
+                            style={{ backgroundColor: 'var(--theme-surface)' }}
+                            className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rotate-45" 
+                          />
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
-            </React.Fragment>
+            </div>
           ))}
         </nav>
 
-        {/* Profile/Footer Section */}
+        {/* User Identity Footprint */}
         <div className="p-4 mt-auto">
-          <div className="bg-slate-50 rounded-2xl p-2 space-y-1 border border-slate-100">
-            <div className="relative group">
-              <Link 
-                to={AppRoutes.SETTINGS}
-                className={`flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all ${isCollapsed ? 'justify-center' : ''}`}
-              >
-                <div className="w-9 h-9 rounded-lg overflow-hidden border-2 border-white shadow-sm shrink-0">
-                  {user?.photoURL ? (
-                    <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400"><UserIcon size={16} /></div>
-                  )}
-                </div>
-                {!isCollapsed && (
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate leading-tight">{user?.displayName || 'Parent'}</p>
-                    <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">Account Settings</p>
-                  </div>
+          <div className="bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-2 space-y-1 transition-all duration-500 overflow-hidden">
+            <Link 
+              to={AppRoutes.SETTINGS}
+              className={`flex items-center gap-3 p-2 rounded-full transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 group
+                ${isCollapsed && !isOpen ? 'justify-center' : ''}
+              `}
+            >
+              <div className="w-12 h-12 rounded-[1.25rem] overflow-hidden bg-white border border-slate-200 flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50"><UserIcon size={24} /></div>
                 )}
-              </Link>
-              {isCollapsed && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-300 pointer-events-none z-50">
-                  Settings
-                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
+              </div>
+              {(!isCollapsed || isOpen) && (
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-slate-800 truncate leading-tight">{user?.displayName || 'Pet Parent'}</p>
+                  <p className="text-[10px] font-black text-theme uppercase tracking-widest mt-1 opacity-60">Verified Admin</p>
                 </div>
               )}
-            </div>
+            </Link>
 
-            <div className="relative group">
-              <button
-                onClick={handleLogout}
-                className={`w-full flex items-center gap-3 p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50/50 transition-all ${isCollapsed ? 'justify-center' : ''}`}
-              >
-                <LogOut size={18} />
-                {!isCollapsed && <span className="text-xs font-bold">Sign Out</span>}
-              </button>
-              {isCollapsed && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-300 pointer-events-none z-50">
-                  Sign Out
-                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
-                </div>
-              )}
-            </div>
+            <button
+              onClick={handleLogout}
+              className={`w-full flex items-center gap-3 p-3.5 rounded-full transition-all text-slate-400 hover:text-rose-600 hover:bg-rose-50 group
+                ${isCollapsed && !isOpen ? 'justify-center' : ''}
+              `}
+            >
+              <LogOut size={20} className="transition-transform group-hover:-translate-x-1" />
+              {(!isCollapsed || isOpen) && <span className="text-[11px] font-black uppercase tracking-[0.2em]">Exit Portal</span>}
+            </button>
           </div>
         </div>
 
-        {/* Desktop Collapse Toggle */}
+        {/* Floating Toggle Trigger (Desktop) */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex absolute -right-4 top-20 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-lg items-center justify-center text-slate-400 hover:text-theme hover:scale-110 hover:shadow-xl transition-all z-[80] active:scale-95"
+          className={`
+            hidden md:flex absolute -right-4 top-32 w-8 h-12 bg-white border border-slate-200 rounded-2xl shadow-xl 
+            items-center justify-center text-slate-400 hover:text-theme transition-all z-[80] 
+            hover:scale-105 active:scale-95 group/toggle
+          `}
         >
-          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {isCollapsed ? (
+            <ChevronRight size={18} className="group-hover/toggle:translate-x-0.5 transition-transform" />
+          ) : (
+            <ChevronLeft size={18} className="group-hover/toggle:-translate-x-0.5 transition-transform" />
+          )}
         </button>
       </aside>
     </>

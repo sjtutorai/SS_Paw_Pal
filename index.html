@@ -1,30 +1,32 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SS Paw Pal Pro</title>
+    <title>SS Paw Pal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dazlddxht/image/upload/v1768234409/SS_Paw_Pal_Logo_aceyn8.png">
     <style>
         :root {
             --theme-color: #4f46e5;
             --theme-color-hover: #4338ca;
             --theme-color-light: #eef2ff;
+            --theme-surface: #0f172a;
         }
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
-            color: #1e293b;
             margin: 0;
             padding: 0;
             overflow-x: hidden;
         }
+        /* Native Preloader Styles */
         #preloader {
             position: fixed;
             inset: 0;
-            background: #ffffff;
+            background: #f8fafc;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -37,57 +39,69 @@
             visibility: hidden;
         }
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #f1f5f9;
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e2e8f0;
             border-top-color: var(--theme-color);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 1s linear infinite;
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .custom-scrollbar-hide::-webkit-scrollbar { display: none; }
-        .custom-scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .text-theme { color: var(--theme-color); }
-        .bg-theme { background-color: var(--theme-color); }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Dynamic Theme Utilities */
+        .bg-theme { background-color: var(--theme-color) !important; }
+        .bg-theme-hover:hover { background-color: var(--theme-color-hover) !important; }
+        .bg-theme-light { background-color: var(--theme-color-light) !important; }
+        .bg-theme-surface { background-color: var(--theme-surface) !important; }
+        .text-theme { color: var(--theme-color) !important; }
+        .text-theme-hover:hover { color: var(--theme-color-hover) !important; }
+        .border-theme { border-color: var(--theme-color) !important; }
+        .ring-theme:focus { --tw-ring-color: var(--theme-color) !important; }
+
+        /* Scanning Animation */
         @keyframes scan-beam {
-          0% { top: 0; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { top: 100%; opacity: 0; }
+          0% { top: 0; }
+          50% { top: 100%; }
+          100% { top: 0; }
         }
         .animate-scan-beam {
-          animation: scan-beam 2.5s ease-in-out infinite;
+          animation: scan-beam 2s ease-in-out infinite;
         }
     </style>
     <script>
+        // Immediate Theme Application to prevent FOUC
         (function() {
             const savedTheme = localStorage.getItem('ssp_theme_color') || '#4f46e5';
+            const savedSurface = localStorage.getItem('ssp_theme_surface') || '#0f172a';
             const root = document.documentElement;
             root.style.setProperty('--theme-color', savedTheme);
+            root.style.setProperty('--theme-color-hover', savedTheme + 'dd'); 
+            root.style.setProperty('--theme-color-light', savedTheme + '15');
+            root.style.setProperty('--theme-surface', savedSurface);
         })();
     </script>
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?deps=react@18.3.1,react-dom@18.3.1",
-    "lucide-react": "https://esm.sh/lucide-react@0.474.0?deps=react@18.3.1",
-    "firebase/app": "https://esm.sh/firebase@11.2.0/app",
-    "firebase/auth": "https://esm.sh/firebase@11.2.0/auth",
-    "firebase/firestore": "https://esm.sh/firebase@11.2.0/firestore",
-    "@google/genai": "https://esm.sh/@google/genai@1.3.5",
-    "lodash.debounce": "https://esm.sh/lodash.debounce@4.0.8",
-    "jsqr": "https://esm.sh/jsqr@1.4.0",
+    "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "firebase/": "https://esm.sh/firebase@^12.8.0/",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.3.5",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "lodash.debounce": "https://esm.sh/lodash.debounce@4.0.8",
+    "jsqr": "https://esm.sh/jsqr@1.4.0"
   }
 }
 </script>
@@ -95,6 +109,7 @@
 <body>
     <div id="preloader">
         <div class="spinner"></div>
+        <p style="margin-top: 20px; font-weight: 800; font-size: 12px; color: #64748b; letter-spacing: 0.2em; text-transform: uppercase;">SS Paw Pal Loading</p>
     </div>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
