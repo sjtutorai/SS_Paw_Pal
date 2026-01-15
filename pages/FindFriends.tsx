@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, UserPlus, UserCheck, Mail, Loader2, User as UserIcon, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
