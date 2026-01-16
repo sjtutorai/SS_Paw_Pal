@@ -93,6 +93,8 @@ const PetProfilePage: React.FC = () => {
   const [newPet, setNewPet] = useState<Partial<PetProfile>>({ name: '', breed: '', birthday: '', bio: '', species: 'Dog', weightHistory: [], vaccinations: [] });
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const qrFileInputRef = useRef<HTMLInputElement>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -168,6 +170,56 @@ const PetProfilePage: React.FC = () => {
     } finally { setIsGeneratingAvatar(false); }
   };
 
+  const handleScanSuccess = async (scannedId: string) => {
+    setIsScanning(false);
+    try {
+      const petData = await getPetById(scannedId);
+      if (petData) {
+        alert(`Found Pet Profile: ${petData.name} (SSP ID: ${scannedId})`);
+      } else {
+        alert(`No pet record found with SSP ID: ${scannedId}`);
+      }
+    } catch (e) {
+      alert("Error retrieving pet record from the database.");
+    }
+  };
+
+  const handleScanClick = () => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      setIsScanning(true);
+    } else {
+      qrFileInputRef.current?.click();
+    }
+  };
+
+  const handleFileScan = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          handleScanSuccess(code.data);
+        } else {
+          alert("No QR code detected in this image. Please try another photo.");
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-10 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -175,12 +227,27 @@ const PetProfilePage: React.FC = () => {
           <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Companion Registry</h2>
           <p className="text-slate-500 font-medium text-sm">Manage profiles and wellness records for your pets.</p>
         </div>
-        <button 
-          onClick={() => { setStep(1); setIsAdding(true); }} 
-          className="flex items-center gap-2 px-6 py-3.5 bg-theme text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-theme-hover transition-all shadow-xl shadow-theme/10 active:scale-95"
-        >
-          <Plus size={18} /> Register Companion
-        </button>
+        <div className="flex items-center gap-3">
+          <input 
+            type="file" 
+            ref={qrFileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleFileScan} 
+          />
+          <button 
+            onClick={handleScanClick} 
+            className="flex items-center gap-2 px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+          >
+            <Scan size={18} /> {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'Scan ID' : 'Upload ID'}
+          </button>
+          <button 
+            onClick={() => { setStep(1); setIsAdding(true); }} 
+            className="flex items-center gap-2 px-6 py-3.5 bg-theme text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-theme-hover transition-all shadow-xl shadow-theme/10 active:scale-95"
+          >
+            <Plus size={18} /> Register Companion
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-4 scroll-hide">
@@ -232,7 +299,6 @@ const PetProfilePage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-8">
             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-50 shadow-xl text-center space-y-6 relative overflow-hidden group">
-              {/* Avatar Square with Integrated Logic */}
               <div className="w-52 h-52 rounded-[3.5rem] overflow-hidden mx-auto shadow-2xl relative border-4 border-white">
                 {selectedPet.avatarUrl ? (
                   <img src={selectedPet.avatarUrl} className="w-full h-full object-cover" />
@@ -240,14 +306,12 @@ const PetProfilePage: React.FC = () => {
                   <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-200"><Dog size={64} /></div>
                 )}
                 
-                {/* Generation Loading State */}
                 {isGeneratingAvatar && (
                   <div className="absolute inset-0 bg-white/40 flex items-center justify-center backdrop-blur-md">
                     <Loader2 size={32} className="animate-spin text-theme" />
                   </div>
                 )}
 
-                {/* Integrated Key Requirement Overlay (Screenshot 2 Match) */}
                 {showKeyPromptOverlay && (
                   <div className="absolute inset-0 bg-indigo-600/90 text-white flex flex-col items-center justify-center p-6 text-center animate-in zoom-in duration-300">
                     <Key size={32} className="mb-3 text-theme shadow-sm" />
