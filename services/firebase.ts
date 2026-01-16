@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -8,7 +9,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
-  User as FirebaseUser 
+  User as FirebaseUser,
+  OAuthProvider
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -25,7 +27,8 @@ import {
   serverTimestamp, 
   orderBy, 
   onSnapshot,
-  deleteDoc
+  deleteDoc,
+  increment
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -114,6 +117,20 @@ export const loginWithGoogle = async () => {
     }
   } catch (error: any) {
     console.error("Google login error:", error);
+    throw error;
+  }
+};
+
+export const loginWithApple = async () => {
+  const provider = new OAuthProvider('apple.com');
+  try {
+    const result = await signInWithPopup(auth, provider);
+    if (result.user) {
+      await syncUserToDb(result.user);
+      return result.user;
+    }
+  } catch (error: any) {
+    console.error("Apple login error:", error);
     throw error;
   }
 };
@@ -214,6 +231,30 @@ export const sendChatMessage = async (chatId: string, senderId: string, text: st
   await updateDoc(chatRef, {
     lastMessage: text,
     lastTimestamp: serverTimestamp(),
+  });
+};
+
+export const addCommentToPost = async (postId: string, userId: string, userName: string, userAvatar: string | null, text: string) => {
+  const postRef = doc(db, "posts", postId);
+  const commentsRef = collection(postRef, "comments");
+  
+  await addDoc(commentsRef, {
+    userId,
+    userName,
+    userAvatar,
+    text,
+    createdAt: serverTimestamp()
+  });
+
+  await updateDoc(postRef, {
+    comments: increment(1)
+  });
+};
+
+export const getCommentsForPost = (postId: string, callback: (comments: any[]) => void) => {
+  const q = query(collection(db, "posts", postId, "comments"), orderBy("createdAt", "asc"));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   });
 };
 

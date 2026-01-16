@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
     {
       title: "Social",
       items: [
-        { label: 'Community', path: AppRoutes.CREATE_POST, icon: PlusSquare },
+        { label: 'Community', path: AppRoutes.COMMUNITY, icon: PlusSquare },
         { label: 'Inbox', path: AppRoutes.CHAT, icon: Send },
         { label: 'Find Friends', path: AppRoutes.FIND_FRIENDS, icon: UserSearch },
       ]

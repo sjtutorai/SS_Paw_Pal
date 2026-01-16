@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   ShieldCheck, 
@@ -149,7 +150,7 @@ const Home: React.FC = () => {
             </div>
           )}
           <Link 
-            to={AppRoutes.CREATE_POST}
+            to={AppRoutes.COMMUNITY}
             className="inline-flex items-center gap-3 bg-theme text-white px-8 py-4 rounded-2xl font-black hover:bg-theme-hover transition-all shadow-xl shadow-theme/10 active:scale-95 transition-theme"
           >
             <Plus size={20} /> Post Moment

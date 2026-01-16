@@ -1,9 +1,10 @@
+
 import React from 'react';
 
 export enum AppRoutes {
   HOME = '/',
   AI_ASSISTANT = '/ai-assistant',
-  CREATE_POST = '/create-post',
+  COMMUNITY = '/community',
   PET_PROFILE = '/pet-profile',
   HEALTH_CHECKUP = '/health-checkup',
   PET_CARE = '/pet-care',
