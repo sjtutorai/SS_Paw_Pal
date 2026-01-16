@@ -54,8 +54,13 @@ const PageLoader = () => (
   </div>
 );
 
-// Fixed: Corrected global window.aistudio type from 'any' to 'AIStudio' to resolve property declaration mismatch.
+// Interface definition to fix TypeScript errors during build
+// Moved inside declare global to avoid type mismatch issues with global scope
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
   interface Window {
     aistudio?: AIStudio;
   }
@@ -191,8 +196,6 @@ const PetProfilePage: React.FC = () => {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
       addNotification('Mobile Scan', 'Camera scanner initializing...', 'info');
-      // For a real mobile implementation, we'd use a camera stream here.
-      // For this demo, we fall back to file selection.
       qrFileInputRef.current?.click();
     } else {
       qrFileInputRef.current?.click();
@@ -226,14 +229,11 @@ const PetProfilePage: React.FC = () => {
             const petData = await getPetById(petId);
             if (petData) {
               addNotification('ID Identified', `Successfully retrieved profile for ${petData.name}`, 'success');
-              
-              // Check if the pet belongs to the current user
               const userPet = pets.find(p => p.id === petData.id);
               if (userPet) {
                 setSelectedPet(userPet);
                 setIsAdding(false);
               } else {
-                // If not user's pet, navigate to public profile
                 navigate(`/pet/${petData.id}`);
               }
             } else {
@@ -247,7 +247,6 @@ const PetProfilePage: React.FC = () => {
           addNotification('No Code Found', 'No valid Paw Pal ID was detected in the image.', 'warning');
         }
         setIsScanning(false);
-        // Clear input
         if (qrFileInputRef.current) qrFileInputRef.current.value = '';
       };
       img.src = event.target?.result as string;

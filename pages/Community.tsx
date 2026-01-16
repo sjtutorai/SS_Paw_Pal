@@ -20,10 +20,7 @@ import {
   PawPrint,
   Check,
   MessageCircle,
-  Users,
-  Dog,
-  Cat,
-  Bird
+  Users
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
