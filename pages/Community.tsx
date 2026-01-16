@@ -17,7 +17,10 @@ import {
   X,
   User as UserIcon,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -49,6 +52,8 @@ interface Post {
   userId: string;
 }
 
+const PET_TYPES = ['All', 'Dog', 'Cat', 'Bird', 'Fish', 'Rabbit', 'Hamster', 'Reptile', 'Other'];
+
 const Community: React.FC = () => {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -61,9 +66,10 @@ const Community: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Search & Filter State
+  // Search & Filter & Sort State
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
+  const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
 
   // Load user's primary pet
   useEffect(() => {
@@ -83,6 +89,7 @@ const Community: React.FC = () => {
   // Fetch global feed
   useEffect(() => {
     setLoading(true);
+    // Initial fetch always newest
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -132,7 +139,7 @@ const Community: React.FC = () => {
         user: user.displayName || 'Pet Parent',
         avatar: user.photoURL || null,
         petName: pet?.name || 'My Pet',
-        petType: pet?.species || 'Unknown',
+        petType: pet?.species || 'Other',
         content: newPostContent.trim(),
         image: selectedImage || '',
         likes: 0,
@@ -154,6 +161,25 @@ const Community: React.FC = () => {
     }
   };
 
+  const handleSharePost = async (post: Post) => {
+    const shareData = {
+      title: `${post.petName}'s Moment | SS Paw Pal`,
+      text: post.content,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log('Share cancelled or failed');
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      addNotification('Link Copied!', 'The link to this community feed has been copied to your clipboard.', 'success');
+    }
+  };
+
   const handleMessageUser = async (targetUserId: string) => {
     if (!user || user.uid === targetUserId) return;
 
@@ -170,13 +196,32 @@ const Community: React.FC = () => {
 
   const filteredPosts = useMemo(() => {
     let result = [...posts];
+
+    // Filter by Search Query (Pet Name or Content)
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(p => p.content.toLowerCase().includes(q) || p.petName.toLowerCase().includes(q));
+      result = result.filter(p => 
+        (p.content?.toLowerCase() || '').includes(q) || 
+        (p.petName?.toLowerCase() || '').includes(q) ||
+        (p.user?.toLowerCase() || '').includes(q)
+      );
     }
-    if (typeFilter !== 'All') result = result.filter(p => p.petType === typeFilter);
+
+    // Filter by Pet Type
+    if (typeFilter !== 'All') {
+      result = result.filter(p => p.petType === typeFilter);
+    }
+
+    // Sort Results
+    if (sortBy === 'popular') {
+      result.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    } else {
+      // Default newest is already handled by Firestore order, but we re-verify here
+      // No extra sort needed if posts state is from chronological firestore query
+    }
+
     return result;
-  }, [posts, searchQuery, typeFilter]);
+  }, [posts, searchQuery, typeFilter, sortBy]);
 
   const formatTime = (createdAt: any) => {
     if (!createdAt) return 'Just now';
@@ -185,23 +230,55 @@ const Community: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-10 pb-32 animate-fade-in">
-      <div>
-        <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Community Feed</h2>
-        <p className="text-slate-500 font-medium">Shared by pet parents globally.</p>
+    <div className="max-w-4xl mx-auto space-y-10 pb-32 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Community Feed</h2>
+          <p className="text-slate-500 font-medium">Connect with pet lovers across the globe.</p>
+        </div>
+        
+        {/* Sort Controls */}
+        <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm self-start">
+          <button 
+            onClick={() => setSortBy('newest')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${sortBy === 'newest' ? 'bg-theme text-white shadow-lg shadow-theme/20' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            <Clock size={14} /> Latest
+          </button>
+          <button 
+            onClick={() => setSortBy('popular')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${sortBy === 'popular' ? 'bg-theme text-white shadow-lg shadow-theme/20' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            <TrendingUp size={14} /> Popular
+          </button>
+        </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-        <div className="relative">
+      {/* Advanced Discovery Bar */}
+      <div className="bg-white rounded-[2.5rem] p-4 border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
           <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search moments by pet name or content..." 
-            className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-14 pr-12 text-sm font-medium text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-theme/10 transition-all" 
+            placeholder="Search by pet name, parent, or content..." 
+            className="w-full bg-slate-50 border border-slate-50 rounded-2xl py-4 pl-14 pr-12 text-sm font-medium text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-theme/10 transition-all" 
           />
+        </div>
+
+        <div className="relative min-w-[180px]">
+          <Filter size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <select 
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="w-full h-full bg-slate-50 border border-slate-50 rounded-2xl py-4 pl-14 pr-10 text-sm font-black uppercase tracking-widest text-slate-600 outline-none appearance-none focus:bg-white focus:ring-4 focus:ring-theme/10 transition-all cursor-pointer"
+          >
+            {PET_TYPES.map(type => (
+              <option key={type} value={type}>{type === 'All' ? 'Every Pet' : type}</option>
+            ))}
+          </select>
+          <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
       </div>
 
@@ -273,8 +350,8 @@ const Community: React.FC = () => {
             <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 text-slate-200">
               <Camera size={48} />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Feed is quiet...</h3>
-            <p className="text-slate-500 font-medium">Be the first to share a moment with the community!</p>
+            <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">No matching moments</h3>
+            <p className="text-slate-500 font-medium">Try adjusting your filters or be the first to post!</p>
           </div>
         ) : filteredPosts.map((post) => (
           <article key={post.id} className="bg-white rounded-[4rem] border border-slate-100 shadow-sm overflow-hidden group hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500">
@@ -292,6 +369,9 @@ const Community: React.FC = () => {
                     {post.user} 
                     <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                     <span className="text-theme font-black">{post.petName}</span>
+                    {post.petType && post.petType !== 'Other' && (
+                      <span className="px-3 py-1 bg-slate-100 text-[8px] font-black text-slate-500 rounded-full uppercase tracking-widest">{post.petType}</span>
+                    )}
                   </h4>
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{formatTime(post.createdAt)}</p>
                 </div>
@@ -327,6 +407,16 @@ const Community: React.FC = () => {
                     <Heart size={18} className="group-hover/like:fill-rose-500" />
                   </div>
                   {post.likes} Appreciation
+                </button>
+
+                <button 
+                  onClick={() => handleSharePost(post)}
+                  className="flex items-center gap-3 font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-theme transition-all group/share"
+                >
+                  <div className="p-3 rounded-2xl bg-white border border-slate-100 group-hover/share:bg-theme-light group-hover/share:border-theme/20 shadow-sm">
+                    <Share2 size={18} />
+                  </div>
+                  Share Moment
                 </button>
               </div>
             </div>
