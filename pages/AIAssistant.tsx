@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
-import { Bot, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { Sparkles, ShieldCheck, Zap } from 'lucide-react';
 
 const AIAssistant: React.FC = () => {
+  const LOGO_URL = "https://res.cloudinary.com/dazlddxht/image/upload/v1768234409/SS_Paw_Pal_Logo_aceyn8.png";
+
   useEffect(() => {
     // Dynamically inject the ThinkStack Chatbot Loader
     const script = document.createElement('script');
@@ -39,9 +41,9 @@ const AIAssistant: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto py-20 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-10 animate-fade-in">
       <div className="relative">
-        {/* Visual representation of the AI Engine */}
-        <div className="w-36 h-36 bg-theme-light rounded-[3.5rem] flex items-center justify-center text-theme shadow-[inset_0_2px_10px_rgba(0,0,0,0.05)] animate-pulse">
-          <Bot size={72} />
+        {/* Visual representation of the SS Paw Pal Engine */}
+        <div className="w-40 h-40 bg-white rounded-[3.5rem] flex items-center justify-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-50 p-6 animate-pulse transition-all">
+          <img src={LOGO_URL} alt="SS Paw Pal Logo" className="w-full h-full object-contain" />
         </div>
         <div className="absolute -top-3 -right-3 w-10 h-10 bg-emerald-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
            <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
@@ -49,7 +51,7 @@ const AIAssistant: React.FC = () => {
       </div>
 
       <div className="space-y-6">
-        <h2 className="text-5xl font-black text-slate-900 tracking-tighter">AI Concierge Live</h2>
+        <h2 className="text-5xl font-black text-slate-900 tracking-tighter">SS Paw Pal</h2>
         <p className="text-slate-500 font-medium max-w-lg mx-auto leading-relaxed text-lg">
           Our specialized pet health expert is ready to assist. 
           Please tap the <span className="text-theme font-black">Chat Bubble</span> in the bottom right corner to start your consultation.
