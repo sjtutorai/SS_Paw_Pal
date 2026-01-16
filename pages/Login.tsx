@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { loginWithGoogle, loginWithApple, loginWithIdentifier, signUpWithEmail } from '../services/firebase';
+import { Loader2, AlertCircle, Eye, EyeOff, MailCheck, RefreshCcw, CheckCircle2 } from 'lucide-react';
+import { 
+  loginWithGoogle, 
+  loginWithApple, 
+  loginWithIdentifier, 
+  signUpWithEmail, 
+  resendVerificationEmail,
+  logout 
+} from '../services/firebase';
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { AppRoutes } from '../types';
@@ -10,7 +17,10 @@ const Login: React.FC = () => {
   const { user, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [verificationNeeded, setVerificationNeeded] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -26,7 +36,7 @@ const Login: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && user.emailVerified) {
       navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
@@ -35,6 +45,7 @@ const Login: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError('');
+    if (successMessage) setSuccessMessage('');
   };
 
   const formatFirebaseError = (err: any) => {
@@ -44,6 +55,7 @@ const Login: React.FC = () => {
     if (code === 'auth/invalid-credential') return "Incorrect credentials.";
     if (code === 'auth/email-already-in-use') return "Email already in use.";
     if (code === 'auth/weak-password') return "Password is too weak.";
+    if (code === 'auth/username-already-in-use') return "This username is already taken.";
     return err.message || "An authentication error occurred.";
   };
 
@@ -69,9 +81,24 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleResend = async () => {
+    setIsResending(true);
+    setError('');
+    try {
+      await resendVerificationEmail();
+      setSuccessMessage("Verification link sent! Please check your inbox.");
+    } catch (err: any) {
+      setError(formatFirebaseError(err));
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
+    setVerificationNeeded(false);
 
     if (!isLogin) {
       if (!agreedToTerms) {
@@ -82,18 +109,25 @@ const Login: React.FC = () => {
         setError("Passwords do not match.");
         return;
       }
-      if (!formData.username) {
-        formData.username = formData.fullName.toLowerCase().replace(/\s/g, '') + Math.floor(Math.random() * 1000);
-      }
     }
 
     setIsLoading(true);
 
     try {
       if (isLogin) {
-        await loginWithIdentifier(formData.identifier, formData.password);
+        const loggedUser = await loginWithIdentifier(formData.identifier, formData.password);
+        if (!loggedUser.emailVerified) {
+          setVerificationNeeded(true);
+          setError("Email not verified. Please check your inbox.");
+          setIsLoading(false);
+        } else {
+          navigate('/', { replace: true });
+        }
       } else {
         await signUpWithEmail(formData.identifier, formData.password, formData.fullName, formData.username);
+        setSuccessMessage("Account created! Check your email for a verification link.");
+        setIsLogin(true);
+        setIsLoading(false);
       }
     } catch (err: any) {
       setError(formatFirebaseError(err));
@@ -101,87 +135,121 @@ const Login: React.FC = () => {
     }
   };
   
-  if (loading || (user && !isLoading)) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-  
   const AppleIcon = () => (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M15.222 6.333c.889 0 1.689-.4 2.311-1.2.511-.622.8-1.511.889-2.4.089-1.067-.511-2.044-1.2-2.733-.622-.622-1.511-1.067-2.578-1-1.2.089-2.178.622-2.867 1.311-.511.622-.978 1.422-1.067 2.4-.178 1.067.356 2.044 1.067 2.733.8.8 1.778 1.289 2.867 1.289M14.6 8.511c-2.4.089-4.578 1.422-5.911 2.933-2.867 3.2-2.311 8.089.089 11.2 1.2.8 2.489 1.422 4.089 1.311.622 0 1.311-.089 2-.267.8-.178 1.6-.4 2.311-.8.267-.267.511-.511.622-.8.089-.267.178-.511.178-.8 0-.267-.089-.511-.178-.622-.178-.267-.356-.511-.622-.622-.356-.267-.8-.4-1.2-.4-.356 0-.622.089-.889.178-.356.178-.8.356-1.311.4-.4.089-.889.089-1.2-.089-1.2-.4-2.178-1.311-2.867-2.578-1.422-2.578-1.067-5.333.267-7.467 1.067-1.6 2.867-2.489 4.578-2.489.356 0 .8.089 1.2.178 1.2.4 2.178 1.2 2.867 2.311a.833.833 0 00.8.4c.267 0 .511-.089.711-.356.178-.267.267-.622.178-.889-.4-.889-1-1.689-1.778-2.4-1.2-1.2-2.733-1.867-4.4-1.867"/>
+    <svg className="w-5 h-5" viewBox="0 0 384 512" fill="currentColor">
+      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 21.8-88.5 21.8-11.4 0-51.1-22.1-82.6-22.1-41.9 0-80.6 24.1-102.2 61.9-43.2 75.3-11.1 185.9 31.5 247.4 20.8 29.9 45.3 63.6 77.3 62.6 31.1-1 42.8-20.1 80.5-20.1 37.7 0 48.6 20.1 80.5 19.3 32.7-.8 53.7-30.5 73.8-60 23.2-33.9 32.7-66.8 33-68.5-.8-.4-64.1-24.6-64.4-97.5zm-58.5-157.4c16-19.7 26.8-47 23.8-74.3-23.3 1-51.3 15.6-68 35.3-14.9 17.5-28 45.3-24.5 71.5 26.1 2 52.7-12.8 68.7-32.5z"/>
     </svg>
   );
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-slate-100 p-8 md:p-10 animate-in fade-in zoom-in-95 duration-500">
-        <div className="mb-8 text-center">
-          <div className="w-20 h-20 bg-white rounded-2xl p-2 flex items-center justify-center shadow-xl border border-slate-50 mx-auto mb-6">
-            <img src={LOGO_URL} alt="SS Paw Pal Logo" className="w-full h-full object-contain" />
+      <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-slate-100 p-8 md:p-12 animate-in fade-in zoom-in-95 duration-500">
+        <div className="mb-10 text-center">
+          <div className="w-24 h-24 bg-white rounded-3xl p-3 flex items-center justify-center shadow-2xl border border-slate-50 mx-auto mb-6 group hover:rotate-6 transition-transform">
+            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-[#0f172a] tracking-tight">
-            {isLogin ? "Log in to your account" : "Create an Account"}
+          <h1 className="text-3xl font-black text-[#0f172a] tracking-tight">
+            {isLogin ? "Welcome Back" : "Start Journey"}
           </h1>
-          <p className="text-slate-500 text-sm mt-2 font-medium">Welcome back to SS Paw Pal</p>
+          <p className="text-slate-400 text-sm mt-2 font-bold uppercase tracking-widest">SS Paw Pal Hub</p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-semibold flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        {error && !verificationNeeded && (
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl text-xs font-black flex items-start gap-3 animate-in slide-in-from-top-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        {successMessage && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl text-xs font-black flex items-start gap-3 animate-in slide-in-from-top-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        {verificationNeeded && (
+          <div className="mb-8 p-6 bg-indigo-50 border border-indigo-100 rounded-3xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 text-indigo-700">
+              <MailCheck className="w-6 h-6" />
+              <h3 className="font-black text-sm uppercase tracking-tight">Verify Your Email</h3>
+            </div>
+            <p className="text-xs text-indigo-600/80 font-medium leading-relaxed">
+              We've sent a magic link to your inbox. Please click it to activate your companion portal.
+            </p>
+            <button 
+              onClick={handleResend}
+              disabled={isResending}
+              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
+            >
+              {isResending ? <RefreshCcw className="w-3 h-3 animate-spin" /> : <RefreshCcw className="w-3 h-3" />}
+              Resend verification link
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Name</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
               <input 
                 required 
                 name="fullName" 
                 type="text" 
-                placeholder="Enter your name" 
+                placeholder="Pet Parent Name" 
                 value={formData.fullName} 
                 onChange={handleChange} 
-                className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-slate-300" 
               />
             </div>
           )}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700 ml-1">
-              {isLogin ? "Username or Email" : "Email"}
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+              {isLogin ? "Username or Email" : "Email Address"}
             </label>
             <input 
               required 
               name="identifier" 
               type={isLogin ? "text" : "email"} 
-              placeholder={isLogin ? "Enter username or email" : "example@gmail.com"} 
+              placeholder={isLogin ? "example@email.com" : "your@email.com"} 
               value={formData.identifier} 
               onChange={handleChange} 
-              className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+              className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-slate-300" 
             />
           </div>
 
+          {!isLogin && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Username</label>
+              <input 
+                required 
+                name="username" 
+                type="text" 
+                placeholder="unique_handle" 
+                value={formData.username} 
+                onChange={handleChange} 
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-slate-300" 
+              />
+            </div>
+          )}
+
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700 ml-1">Password</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
             <div className="relative">
               <input 
                 required 
                 name="password" 
                 type={showPassword ? "text" : "password"} 
-                placeholder="Enter your Password" 
+                placeholder="••••••••" 
                 value={formData.password} 
                 onChange={handleChange} 
-                className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 pr-12 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 pr-14 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-slate-300" 
               />
               <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -190,21 +258,21 @@ const Login: React.FC = () => {
 
           {!isLogin && (
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Confirm Password</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirm Password</label>
               <div className="relative">
                 <input 
                   required 
                   name="confirmPassword" 
                   type={showConfirmPassword ? "text" : "password"} 
-                  placeholder="Please confirm your Password" 
+                  placeholder="••••••••" 
                   value={formData.confirmPassword} 
                   onChange={handleChange} 
-                  className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 pr-12 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 pr-14 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-slate-300" 
                 />
                 <button 
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -213,16 +281,16 @@ const Login: React.FC = () => {
           )}
 
           {!isLogin && (
-            <div className="flex items-start gap-3 py-1">
+            <div className="flex items-start gap-3 py-2">
               <input 
                 id="terms"
                 type="checkbox" 
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                className="mt-1 w-4 h-4 rounded-lg border-slate-200 text-indigo-600 focus:ring-indigo-500/20"
               />
-              <label htmlFor="terms" className="text-sm text-slate-600 leading-tight">
-                I agree with the <Link to={AppRoutes.TERMS} className="text-slate-900 underline hover:text-indigo-600 transition-colors">Terms of Service</Link> and <Link to={AppRoutes.PRIVACY} className="text-slate-900 underline hover:text-indigo-600 transition-colors">Privacy Policy</Link>.
+              <label htmlFor="terms" className="text-[11px] text-slate-500 font-bold leading-tight">
+                I agree with the <Link to={AppRoutes.TERMS} className="text-slate-900 underline hover:text-indigo-600">Terms</Link> and <Link to={AppRoutes.PRIVACY} className="text-slate-900 underline hover:text-indigo-600">Privacy Policy</Link>.
               </label>
             </div>
           )}
@@ -230,49 +298,49 @@ const Login: React.FC = () => {
           <button 
             type="submit" 
             disabled={isLoading} 
-            className="w-full bg-[#334155] text-white py-4 rounded-lg font-bold text-base hover:bg-[#1e293b] transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 mt-4 shadow-sm"
+            className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl"
           >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? "Log in" : "Create Account")}
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? "Secure Login" : "Create Account")}
           </button>
         </form>
 
-        <div className="mt-8 pt-8 border-t border-slate-50 text-center">
-          <p className="text-slate-600 text-sm font-medium">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
+        <div className="mt-10 pt-8 border-t border-slate-50 text-center">
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+            {isLogin ? "No account?" : "Already member?"}
             <button 
-              onClick={() => { setIsLogin(!isLogin); setError(''); }} 
-              className="ml-1.5 text-slate-900 font-bold hover:text-indigo-600 transition-colors"
+              onClick={() => { setIsLogin(!isLogin); setError(''); setSuccessMessage(''); setVerificationNeeded(false); }} 
+              className="ml-2 text-indigo-600 hover:text-indigo-800 transition-colors"
             >
               {isLogin ? "Sign up" : "Log in"}
             </button>
           </p>
         </div>
 
-        {isLogin && (
-           <div className="mt-6 flex flex-col gap-3">
-              <div className="flex items-center gap-4 text-slate-300">
-                <div className="h-px flex-1 bg-slate-100"></div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">or</span>
-                <div className="h-px flex-1 bg-slate-100"></div>
-              </div>
+        <div className="mt-8 flex flex-col gap-4">
+            <div className="flex items-center gap-4 text-slate-200">
+              <div className="h-px flex-1 bg-slate-100"></div>
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">or social portal</span>
+              <div className="h-px flex-1 bg-slate-100"></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={handleGoogleLogin} 
                 disabled={isLoading} 
-                className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 py-3.5 rounded-lg font-bold text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98] disabled:opacity-50 text-sm"
+                className="flex items-center justify-center gap-2 bg-white border border-slate-100 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98] disabled:opacity-50 shadow-sm"
               >
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
-                Continue with Google
+                Google
               </button>
               <button 
                 onClick={handleAppleLogin} 
                 disabled={isLoading} 
-                className="w-full flex items-center justify-center gap-3 bg-black border border-slate-800 py-3.5 rounded-lg font-bold text-white hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-50 text-sm"
+                className="flex items-center justify-center gap-2 bg-black py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-white hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-50 shadow-xl"
               >
                 <AppleIcon />
-                Continue with Apple
+                Apple
               </button>
-           </div>
-        )}
+            </div>
+        </div>
       </div>
     </div>
   );

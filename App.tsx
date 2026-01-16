@@ -33,14 +33,24 @@ const UserProfile = lazy(() => import('./pages/UserProfile'));
 const UsernameDataStore = lazy(() => import('./pages/UsernameDataStore'));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  const { user, loading } = useAuth();
+  
+  if (loading) return <PageLoader />;
+  
+  // If no user OR user exists but email is not verified, redirect to login
+  if (!user || !user.emailVerified) {
+    return <Navigate to="/login" replace />;
+  }
+  
   return <Layout>{children}</Layout>;
 };
 
 const PageLoader = () => (
-  <div className="flex h-full w-full items-center justify-center p-20">
-    <Loader2 className="animate-spin text-theme" size={32} />
+  <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+    <div className="flex flex-col items-center gap-4">
+      <Loader2 className="animate-spin text-theme" size={40} />
+      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Authenticating Portal</span>
+    </div>
   </div>
 );
 
@@ -180,7 +190,6 @@ const PetProfilePage: React.FC = () => {
   const handleScanClick = () => {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
-      // Logic for mobile scanning would go here
       alert("Mobile camera scanning initiated...");
     } else {
       qrFileInputRef.current?.click();
@@ -232,7 +241,6 @@ const PetProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Pet Selector Tabs */}
       <div className="flex gap-3 overflow-x-auto pb-4 scroll-hide">
         {pets.map(p => (
           <button 
@@ -280,7 +288,6 @@ const PetProfilePage: React.FC = () => {
         </div>
       ) : selectedPet ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Card Sidebar */}
           <div className="lg:col-span-1 space-y-8">
             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-50 shadow-xl text-center space-y-6 relative overflow-hidden group">
               <div className="w-52 h-52 rounded-[3.5rem] overflow-hidden mx-auto shadow-2xl relative border-4 border-white transition-all duration-500 hover:scale-[1.02]">
@@ -292,7 +299,6 @@ const PetProfilePage: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Generation Overlay */}
                 {isGeneratingAvatar && (
                   <div className="absolute inset-0 bg-white/40 flex flex-col items-center justify-center backdrop-blur-md">
                     <Loader2 size={32} className="animate-spin text-theme mb-2" />
@@ -300,7 +306,6 @@ const PetProfilePage: React.FC = () => {
                   </div>
                 )}
 
-                {/* API Key Modal-Style Overlay (Matches Screenshot but stable) */}
                 {showKeyPrompt && (
                   <div className="absolute inset-0 bg-indigo-600/90 text-white flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-300 z-10">
                     <Key size={32} className="mb-3 text-theme shadow-sm" />
@@ -317,7 +322,6 @@ const PetProfilePage: React.FC = () => {
                 )}
               </div>
 
-              {/* Action Buttons */}
               <div className="flex gap-2 justify-center">
                 <button 
                   onClick={() => fileInputRef.current?.click()} 
@@ -354,7 +358,6 @@ const PetProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Profile Content */}
           <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-slate-50 shadow-sm min-h-[400px]">
              <div className="flex items-center gap-4 mb-8">
                <div className="p-3 bg-slate-900 text-theme rounded-xl shadow-md"><Brain size={24} /></div>
