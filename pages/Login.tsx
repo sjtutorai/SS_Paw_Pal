@@ -50,13 +50,16 @@ const Login: React.FC = () => {
 
   const formatFirebaseError = (err: any) => {
     const code = err.code || '';
+    console.error("Auth Error:", code, err);
     if (code === 'auth/popup-blocked') return "Sign-in popup was blocked.";
     if (code === 'auth/popup-closed-by-user') return "Sign-in was cancelled.";
     if (code === 'auth/invalid-credential') return "Incorrect credentials.";
-    if (code === 'auth/email-already-in-use') return "Email already in use.";
-    if (code === 'auth/weak-password') return "Password is too weak.";
-    if (code === 'auth/username-already-in-use') return "This username is already taken.";
-    return err.message || "An authentication error occurred.";
+    if (code === 'auth/email-already-in-use') return "This email is already registered.";
+    if (code === 'auth/weak-password') return "Password must be at least 6 characters.";
+    if (code === 'auth/username-already-in-use') return "This handle is already taken.";
+    if (code === 'auth/invalid-email') return "Please enter a valid email address.";
+    if (code === 'auth/network-request-failed') return "Network error. Please check your connection.";
+    return err.message || "An unexpected error occurred.";
   };
 
   const handleGoogleLogin = async () => {
@@ -94,22 +97,37 @@ const Login: React.FC = () => {
     }
   };
 
+  const validateForm = () => {
+    if (!isLogin) {
+      if (!agreedToTerms) {
+        setError("Please agree to the Terms and Privacy Policy.");
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match.");
+        return false;
+      }
+      if (!formData.identifier.includes('@')) {
+        setError("Please enter a valid email address for account creation.");
+        return false;
+      }
+      if (formData.username.length < 3) {
+        setError("Handle must be at least 3 characters.");
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+    
     setError('');
     setSuccessMessage('');
     setVerificationNeeded(false);
 
-    if (!isLogin) {
-      if (!agreedToTerms) {
-        setError("Please agree to the Terms and Privacy Policy.");
-        return;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setError("Passwords do not match.");
-        return;
-      }
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
@@ -119,26 +137,29 @@ const Login: React.FC = () => {
         if (!loggedUser.emailVerified) {
           setVerificationNeeded(true);
           setError("Email not verified. Please check your inbox.");
-          setIsLoading(false);
         } else {
           navigate('/', { replace: true });
         }
       } else {
-        await signUpWithEmail(formData.identifier, formData.password, formData.fullName, formData.username);
-        setSuccessMessage("Account created! Check your email for a verification link.");
+        await signUpWithEmail(
+          formData.identifier, 
+          formData.password, 
+          formData.fullName, 
+          formData.username
+        );
+        setSuccessMessage("Account created! We've sent a link to your email.");
         setIsLogin(true);
-        setIsLoading(false);
       }
     } catch (err: any) {
       setError(formatFirebaseError(err));
+    } finally {
       setIsLoading(false);
     }
   };
   
   const AppleIcon = () => (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12.1522 6.40074C10.7439 6.40074 9.17631 7.2334 8.44143 7.2334C7.70654 7.2334 6.40114 6.48422 5.2587 6.48422C3.76344 6.48422 1 7.61908 1 11.458C1 15.3134 3.42413 21.0157 5.17431 21.0157C6.03947 21.0157 6.37837 20.4478 7.42456 20.4478C8.47076 20.4478 8.86641 21.0157 9.77114 21.0157C10.6759 21.0157 13.0645 15.1128 13.0645 11.2355C13.0645 11.1965 13.0645 11.1576 13.0645 11.1187C13.0645 8.76106 11.2334 6.40074 12.1522 6.40074Z" />
-      <path d="M10.8718 2.5C9.36219 2.68415 8.01255 3.52044 7.21817 4.74233C6.42379 5.96422 6.30752 7.35515 6.90141 8.5C8.44474 8.4116 9.87321 7.5147 10.6406 6.20815C11.408 4.9016 11.3983 3.3934 10.8718 2.5Z" />
+    <svg className="w-5 h-5" viewBox="0 0 384 512" fill="currentColor">
+        <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 21.8-88.5 21.8-11.4 0-51.1-22.1-82.6-22.1-41.9 0-80.6 24.1-102.2 61.9-43.2 75.3-11.1 185.9 31.5 247.4 20.8 29.9 45.3 63.6 77.3 62.6 31.1-1 42.8-20.1 80.5-20.1 37.7 0 48.6 20.1 80.5 19.3 32.7-.8 53.7-30.5 73.8-60 23.2-33.9 32.7-66.8 33-68.5-.8-.4-64.1-24.6-64.4-97.5zm-58.5-157.4c16-19.7 26.8-47 23.8-74.3-23.3 1-51.3 15.6-68 35.3-14.9 17.5-28 45.3-24.5 71.5 26.1 2 52.7-12.8 68.7-32.5z"/>
     </svg>
   );
 

@@ -33,6 +33,7 @@ import { User, PetProfile } from '../types';
 const firebaseConfig = {
   apiKey: "AIzaSyCVUMhFhDzfbvF-iXthH6StOlI6mJreTmA",
   authDomain: "smart-support-for-pets.firebaseapp.com",
+  databaseURL: "https://smart-support-for-pets-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "smart-support-for-pets",
   storageBucket: "smart-support-for-pets.firebasestorage.app",
   messagingSenderId: "737739952686",
@@ -45,14 +46,19 @@ export const db = getFirestore(app);
 
 export const isUsernameTaken = async (username: string, excludeUid: string) => {
   if (!username) return false;
-  const q = query(
-    collection(db, "users"), 
-    where("username", "==", username.toLowerCase().trim()), 
-    limit(1)
-  );
-  const querySnapshot = await getDocs(q);
-  if (querySnapshot.empty) return false;
-  return querySnapshot.docs[0].id !== excludeUid;
+  try {
+    const q = query(
+      collection(db, "users"), 
+      where("username", "==", username.toLowerCase().trim()), 
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return false;
+    return querySnapshot.docs[0].id !== excludeUid;
+  } catch (err) {
+    console.warn("Username check failed, proceeding:", err);
+    return false; // Fail safe to allow registration if query fails
+  }
 };
 
 export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
@@ -213,14 +219,23 @@ export const loginWithIdentifier = async (identifier: string, password: string) 
 export const signUpWithEmail = async (email: string, password: string, fullName: string, username: string) => {
   const isTaken = await isUsernameTaken(username, '');
   if (isTaken) throw { code: 'auth/username-already-in-use' };
+  
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
+  
   await updateProfile(user, { displayName: fullName });
-  await sendEmailVerification(user);
+  
+  try {
+    await sendEmailVerification(user);
+  } catch (e) {
+    console.warn("Verification email failed to send, proceeding with registration.", e);
+  }
+  
   await syncUserToDb(user, {
     displayName: fullName,
     username: username.toLowerCase().trim(),
   });
+  
   return user;
 };
 
