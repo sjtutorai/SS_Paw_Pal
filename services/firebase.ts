@@ -5,7 +5,6 @@ import {
   signOut, 
   onAuthStateChanged, 
   GoogleAuthProvider, 
-  OAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -27,8 +26,7 @@ import {
   serverTimestamp, 
   orderBy, 
   onSnapshot,
-  deleteDoc,
-  increment
+  deleteDoc
 } from "firebase/firestore";
 import { AIChatMessage, AIChatSession } from '../types';
 
@@ -45,7 +43,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// AI Chat Functions
 export const createAIChatSession = async (userId: string, title: string) => {
   const sessionRef = await addDoc(collection(db, "users", userId, "ai_chats"), {
     title,
@@ -75,7 +72,6 @@ export const getAIChatMessages = async (userId: string, sessionId: string) => {
   return snap.docs.map(d => d.data() as AIChatMessage);
 };
 
-// User Functions
 export const isUsernameTaken = async (username: string, excludeUid: string) => {
   if (!username) return false;
   const q = query(
@@ -108,7 +104,6 @@ export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
   }
 };
 
-// Pet Functions
 export const syncPetToDb = async (pet: any) => {
   const petRef = doc(db, "pets", pet.id);
   await setDoc(petRef, {
@@ -124,7 +119,6 @@ export const getPetById = async (id: string) => {
   return snap.exists() ? snap.data() : null;
 };
 
-// Auth Actions
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account consent' });
@@ -136,20 +130,6 @@ export const loginWithGoogle = async () => {
     }
   } catch (error: any) {
     console.error("Google login error:", error);
-    throw error;
-  }
-};
-
-export const loginWithApple = async () => {
-  const provider = new OAuthProvider('apple.com');
-  try {
-    const result = await signInWithPopup(auth, provider);
-    if (result.user) {
-      await syncUserToDb(result.user);
-      return result.user;
-    }
-  } catch (error: any) {
-    console.error("Apple login error:", error);
     throw error;
   }
 };
@@ -199,7 +179,6 @@ export const updateUserProfile = async (uid: string, data: { displayName?: strin
   if (Object.keys(updateData).length > 0) await updateDoc(userRef, updateData);
 };
 
-// Social Functions
 export const startChat = async (currentUserId: string, targetUserId: string): Promise<string> => {
   const participants = [currentUserId, targetUserId].sort();
   const q = query(collection(db, "chats"), where("participants", "==", participants), limit(1));
@@ -213,31 +192,6 @@ export const sendChatMessage = async (chatId: string, senderId: string, text: st
   const chatRef = doc(db, "chats", chatId);
   await addDoc(collection(chatRef, "messages"), { senderId, text, timestamp: serverTimestamp() });
   await updateDoc(chatRef, { lastMessage: text, lastTimestamp: serverTimestamp() });
-};
-
-// Commenting Functions
-export const addCommentToPost = async (postId: string, userId: string, userName: string, userAvatar: string | null, text: string) => {
-  const postRef = doc(db, "posts", postId);
-  const commentsRef = collection(postRef, "comments");
-  
-  await addDoc(commentsRef, {
-    userId,
-    userName,
-    userAvatar,
-    text,
-    createdAt: serverTimestamp()
-  });
-
-  await updateDoc(postRef, {
-    comments: increment(1)
-  });
-};
-
-export const getCommentsForPost = (postId: string, callback: (comments: any[]) => void) => {
-  const q = query(collection(db, "posts", postId, "comments"), orderBy("createdAt", "asc"));
-  return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  });
 };
 
 export const searchUsersByEmail = async (email: string, currentUserId: string) => {

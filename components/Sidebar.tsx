@@ -1,5 +1,4 @@
 
-// Fix: Added React import to resolve "Cannot find namespace 'React'" errors.
 import React, { useMemo } from 'react';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
@@ -16,8 +15,6 @@ import {
   UserSearch,
   LayoutDashboard,
   Settings,
-  ShieldCheck,
-  Zap
 } from 'lucide-react';
 import { AppRoutes } from '../types';
 import { logout } from '../services/firebase';
@@ -37,25 +34,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
   const menuGroups = [
     {
-      title: "Core",
+      title: "Navigation",
       items: [
         { label: 'Dashboard', path: AppRoutes.HOME, icon: LayoutDashboard },
-        { label: 'AI Assistant', path: AppRoutes.AI_ASSISTANT, icon: Sparkles },
+        { label: 'AI Support', path: AppRoutes.AI_ASSISTANT, icon: Sparkles },
         { label: 'Wellness', path: AppRoutes.PET_CARE, icon: Stethoscope },
       ]
     },
     {
-      title: "Social",
+      title: "Community",
       items: [
-        { label: 'Moments', path: AppRoutes.CREATE_POST, icon: PlusSquare },
+        { label: 'Feed', path: AppRoutes.CREATE_POST, icon: PlusSquare },
         { label: 'Messages', path: AppRoutes.CHAT, icon: Send },
         { label: 'Discovery', path: AppRoutes.FIND_FRIENDS, icon: UserSearch },
       ]
     },
     {
-      title: "Configuration",
+      title: "Settings",
       items: [
-        { label: 'Companions', path: AppRoutes.PET_PROFILE, icon: Dog },
+        { label: 'Companion', path: AppRoutes.PET_PROFILE, icon: Dog },
         { label: 'Settings', path: AppRoutes.SETTINGS, icon: Settings },
       ]
     }
@@ -72,9 +69,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
   const LOGO_URL = "https://res.cloudinary.com/dazlddxht/image/upload/v1768234409/SS_Paw_Pal_Logo_aceyn8.png";
 
+  // Flatten items to find the global index for the indicator position
   const allItems = useMemo(() => menuGroups.flatMap(g => g.items), [menuGroups]);
   const activeIndex = allItems.findIndex(item => item.path === location.pathname);
 
+  // Helper to calculate total height offset for the sliding indicator
+  // This logic accounts for group headers and gaps
   const calculateIndicatorStyle = () => {
     if (activeIndex === -1) return { display: 'none' };
     
@@ -99,8 +99,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
     return {
       transform: `translateY(${offset}px)`,
-      width: isCollapsed ? '52px' : 'calc(100% - 24px)',
-      left: isCollapsed ? '18px' : '12px',
+      width: isCollapsed ? '48px' : 'calc(100% - 24px)',
+      left: '12px',
       height: '48px',
       display: 'block'
     };
@@ -108,16 +108,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
   return (
     <>
-      {/* Mobile Backdrop - Enhanced Blur */}
+      {/* Mobile Backdrop - Blur effect */}
       <div 
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] transition-opacity duration-500 md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[60] transition-opacity duration-500 md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Modern Slide Navigation Sidebar */}
+      {/* Slide Navigation Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-[70] 
-        bg-white border-r border-slate-100/80
+        bg-white border-r border-slate-100
         sidebar-transition
         md:relative md:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
@@ -125,10 +125,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
         flex flex-col shadow-2xl md:shadow-none overflow-hidden
       `}>
         
-        {/* Top Branding Section */}
+        {/* Header/Logo Area */}
         <div className="h-24 flex items-center px-6 shrink-0 border-b border-slate-50/60 relative z-10">
-          <Link to={AppRoutes.HOME} className="flex items-center gap-4 group">
-            <div className="w-11 h-11 bg-white border border-slate-100 rounded-2xl p-2 flex items-center justify-center shrink-0 shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-[10deg] group-hover:border-theme/30">
+          <Link to={AppRoutes.HOME} className="flex items-center gap-3.5 group">
+            <div className="w-11 h-11 bg-white border border-slate-100 rounded-xl p-1.5 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105 group-hover:rotate-2">
               <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
             </div>
             {!isCollapsed && (
@@ -136,32 +136,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                 <span className="font-black text-slate-900 tracking-tighter text-xl leading-none">
                   SS Paw Pal
                 </span>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                    AI Online
-                  </span>
-                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                  Pet Care Pro
+                </span>
               </div>
             )}
           </Link>
-          <button 
-            onClick={() => setIsOpen(false)} 
-            className="md:hidden ml-auto p-2 text-slate-400 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
-          >
+          <button onClick={() => setIsOpen(false)} className="md:hidden ml-auto p-2.5 text-slate-400 bg-slate-50 rounded-xl">
             <X size={18} />
           </button>
         </div>
 
-        {/* Navigation Section with Bouncy Sliding Indicator */}
+        {/* Navigation Section with Sliding Indicator */}
         <nav className="flex-1 px-3 py-6 relative overflow-y-auto overflow-x-hidden custom-scrollbar">
-          {/* Dynamic Active Indicator Pill */}
+          {/* Floating Indicator Pill */}
           <div className="nav-indicator" style={calculateIndicatorStyle()} />
 
           {menuGroups.map((group, gIdx) => (
             <div key={gIdx} className="mb-8 last:mb-0">
               {!isCollapsed && (
-                <h3 className="px-5 text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-4 animate-in fade-in slide-in-from-bottom-1">
+                <h3 className="px-5 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 mb-4 animate-in fade-in slide-in-from-bottom-1">
                   {group.title}
                 </h3>
               )}
@@ -177,14 +171,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                         group relative flex items-center gap-4 px-4 h-[48px] rounded-2xl transition-all duration-300
                         ${isActive 
                           ? 'text-white' 
-                          : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'}
+                          : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/80'}
                         ${isCollapsed ? 'justify-center px-0' : ''}
                       `}
                     >
                       <item.icon 
                         size={20} 
-                        strokeWidth={isActive ? 2.5 : 2}
-                        className={`shrink-0 transition-all duration-300 ${isActive ? 'scale-110 drop-shadow-sm' : 'group-hover:scale-110 group-hover:text-slate-900'}`} 
+                        className={`shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} 
                       />
                       
                       {!isCollapsed && (
@@ -193,9 +186,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                         </span>
                       )}
 
-                      {/* Floating Tooltips (Collapsed State) */}
+                      {/* Tooltip for Collapsed State */}
                       {isCollapsed && (
-                        <div className="absolute left-[calc(100%+16px)] px-3 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all z-[100] whitespace-nowrap shadow-2xl tooltip-pop">
+                        <div className="absolute left-[calc(100%+12px)] px-3 py-2 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all z-[100] whitespace-nowrap shadow-xl tooltip-pop">
                           <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45 rounded-sm" />
                           {item.label}
                         </div>
@@ -208,33 +201,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
           ))}
         </nav>
 
-        {/* User Card & Logout - Reimagined */}
-        <div className="p-4 relative z-10 bg-white">
-          <div className="bg-slate-50/50 border border-slate-100/50 rounded-[2rem] p-3 space-y-2 group/card transition-all hover:bg-slate-50 hover:shadow-sm">
-            {!isCollapsed ? (
-              <Link to={AppRoutes.SETTINGS} className="flex items-center gap-3 p-2 hover:bg-white rounded-2xl transition-all group/user">
-                <div className="w-11 h-11 rounded-xl overflow-hidden bg-white border border-slate-200 shrink-0 shadow-sm transition-all group-hover/user:border-theme group-hover/user:shadow-md">
+        {/* User / Logout Section - Redesigned as a floating card */}
+        <div className="p-4 relative z-10 bg-white border-t border-slate-50">
+          <div className="bg-slate-50/80 border border-slate-100/50 rounded-3xl p-3 space-y-2">
+            {!isCollapsed && (
+              <Link to={AppRoutes.SETTINGS} className="flex items-center gap-3 p-2 hover:bg-white rounded-2xl transition-all group">
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-slate-200 shrink-0 shadow-sm group-hover:border-theme transition-colors">
                   {user?.photoURL ? (
                     <img src={user.photoURL} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
-                       <UserIcon size={20} />
+                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                       <UserIcon size={18} />
                     </div>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-black text-slate-900 truncate tracking-tight">{user?.displayName || 'Pet Parent'}</p>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest truncate">Manage Profile</p>
-                </div>
-              </Link>
-            ) : (
-              <Link to={AppRoutes.SETTINGS} className="flex justify-center p-1">
-                <div className="w-11 h-11 rounded-xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-sm group-hover/card:border-theme transition-all">
-                   {user?.photoURL ? (
-                    <img src={user.photoURL} className="w-full h-full object-cover" />
-                  ) : (
-                    <UserIcon size={18} className="text-slate-300" />
-                  )}
+                  <p className="text-[11px] font-black text-slate-900 truncate tracking-tight">{user?.displayName || 'Pet Parent'}</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest truncate">My Account</p>
                 </div>
               </Link>
             )}
@@ -242,23 +225,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
             <button
               onClick={handleLogout}
               className={`
-                w-full flex items-center gap-3 h-12 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest
-                text-slate-400 hover:text-rose-500 hover:bg-rose-50/80 
+                w-full flex items-center gap-3 h-12 rounded-2xl transition-all 
+                text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 
                 ${isCollapsed ? 'justify-center' : 'px-4'}
               `}
             >
               <LogOut size={18} />
-              {!isCollapsed && <span>Sign Out</span>}
+              {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.2em]">Logout</span>}
             </button>
           </div>
         </div>
 
-        {/* Desktop Collapse Controller - Styled Pill */}
+        {/* Desktop Collapse Toggle - Enhanced Style */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex absolute -right-3 top-24 w-8 h-8 bg-white border border-slate-100 rounded-full items-center justify-center text-slate-400 hover:text-theme shadow-[0_8px_16px_rgba(0,0,0,0.06)] transition-all z-50 hover:scale-110 active:scale-90 group"
+          className="hidden md:flex absolute -right-3 top-28 w-7 h-7 bg-white border border-slate-100 rounded-xl items-center justify-center text-slate-400 hover:text-theme shadow-[0_4px_10px_rgba(0,0,0,0.04)] transition-all z-50 hover:scale-110 active:scale-95 group"
         >
-          {isCollapsed ? <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" /> : <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />}
+          {isCollapsed ? <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" /> : <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />}
         </button>
       </aside>
     </>
