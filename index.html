@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SS Paw Pal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dazlddxht/image/upload/v1768234409/SS_Paw_Pal_Logo_aceyn8.png">
     <style>
         :root {
@@ -14,8 +13,6 @@
             --theme-color-hover: #4338ca;
             --theme-color-light: #eef2ff;
             --theme-surface: #334155;
-            --sidebar-width: 280px;
-            --sidebar-collapsed-width: 88px;
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -23,51 +20,7 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
         }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-        
-        /* Dynamic Theme Utilities */
-        .bg-theme { background-color: var(--theme-color) !important; }
-        .text-theme { color: var(--theme-color) !important; }
-        .border-theme { border-color: var(--theme-color) !important; }
-        
-        /* Sidebar Animations */
-        .sidebar-transition {
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .active-pill-shadow {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Nav Indicator Animation */
-        .nav-indicator {
-            position: absolute;
-            left: 12px;
-            right: 12px;
-            height: 48px;
-            border-radius: 14px;
-            background: var(--theme-color);
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            z-index: 0;
-            box-shadow: 0 8px 20px -6px var(--theme-color);
-        }
-
-        /* Tooltip Pop */
-        .tooltip-pop {
-            animation: tooltipPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-        @keyframes tooltipPop {
-            from { opacity: 0; transform: translateX(10px) scale(0.9); }
-            to { opacity: 1; transform: translateX(0) scale(1); }
-        }
-
         /* Native Preloader Styles */
         #preloader {
             position: fixed;
@@ -78,11 +31,11 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s;
         }
         #preloader.fade-out {
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.5s ease;
         }
         .spinner {
             width: 48px;
@@ -92,13 +45,46 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Dynamic Theme Utilities */
+        .bg-theme { background-color: var(--theme-color) !important; }
+        .bg-theme-hover:hover { background-color: var(--theme-color-hover) !important; }
+        .bg-theme-light { background-color: var(--theme-color-light) !important; }
+        .bg-theme-surface { background-color: var(--theme-surface) !important; }
+        .text-theme { color: var(--theme-color) !important; }
+        .text-theme-hover:hover { color: var(--theme-color-hover) !important; }
+        .border-theme { border-color: var(--theme-color) !important; }
+        .ring-theme:focus { --tw-ring-color: var(--theme-color) !important; }
+
+        /* Scanning Animation */
+        @keyframes scan-beam {
+          0% { top: 0; }
+          50% { top: 100%; }
+          100% { top: 0; }
+        }
+        .animate-scan-beam {
+          animation: scan-beam 2s ease-in-out infinite;
+        }
     </style>
     <script>
+        // Immediate Theme Application to prevent FOUC
         (function() {
             const savedTheme = localStorage.getItem('ssp_theme_color') || '#4f46e5';
+            const savedSurface = localStorage.getItem('ssp_surface_color') || '#334155';
             const root = document.documentElement;
             root.style.setProperty('--theme-color', savedTheme);
+            root.style.setProperty('--theme-color-hover', savedTheme + 'dd'); 
+            root.style.setProperty('--theme-color-light', savedTheme + '15');
+            root.style.setProperty('--theme-surface', savedSurface);
         })();
     </script>
 <script type="importmap">

@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export enum AppRoutes {
@@ -66,19 +65,6 @@ export interface ChatMessage {
   receiverId: string;
   text: string;
   timestamp: any;
-}
-
-export interface AIChatMessage {
-  role: 'user' | 'model';
-  parts: { text: string }[];
-  timestamp: any;
-}
-
-export interface AIChatSession {
-  id: string;
-  userId: string;
-  title: string;
-  lastTimestamp: any;
 }
 
 export interface ChatSession {

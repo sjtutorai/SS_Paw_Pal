@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -28,7 +27,6 @@ import {
   onSnapshot,
   deleteDoc
 } from "firebase/firestore";
-import { AIChatMessage, AIChatSession } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCVUMhFhDzfbvF-iXthH6StOlI6mJreTmA",
@@ -43,35 +41,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-export const createAIChatSession = async (userId: string, title: string) => {
-  const sessionRef = await addDoc(collection(db, "users", userId, "ai_chats"), {
-    title,
-    lastTimestamp: serverTimestamp(),
-    createdAt: serverTimestamp(),
-  });
-  return sessionRef.id;
-};
-
-export const saveAIChatMessage = async (userId: string, sessionId: string, message: AIChatMessage) => {
-  const sessionRef = doc(db, "users", userId, "ai_chats", sessionId);
-  await addDoc(collection(sessionRef, "messages"), {
-    ...message,
-    timestamp: serverTimestamp(),
-  });
-  await updateDoc(sessionRef, {
-    lastTimestamp: serverTimestamp(),
-  });
-};
-
-export const getAIChatMessages = async (userId: string, sessionId: string) => {
-  const q = query(
-    collection(db, "users", userId, "ai_chats", sessionId, "messages"),
-    orderBy("timestamp", "asc")
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => d.data() as AIChatMessage);
-};
-
+/**
+ * Checks if a username is already taken by a different user.
+ */
 export const isUsernameTaken = async (username: string, excludeUid: string) => {
   if (!username) return false;
   const q = query(
@@ -81,9 +53,14 @@ export const isUsernameTaken = async (username: string, excludeUid: string) => {
   );
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return false;
+  
+  // Taken if the existing document belongs to a different UID
   return querySnapshot.docs[0].id !== excludeUid;
 };
 
+/**
+ * Force-saves user data to Firestore. 
+ */
 export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
   const userRef = doc(db, "users", user.uid);
   const data = {
@@ -95,6 +72,7 @@ export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
     lastLogin: new Date().toISOString(),
     ...extraData
   };
+  
   try {
     await setDoc(userRef, data, { merge: true });
     return data;
@@ -104,6 +82,9 @@ export const syncUserToDb = async (user: FirebaseUser, extraData: any = {}) => {
   }
 };
 
+/**
+ * Syncs pet profile to global Firestore collection.
+ */
 export const syncPetToDb = async (pet: any) => {
   const petRef = doc(db, "pets", pet.id);
   await setDoc(petRef, {
@@ -122,6 +103,9 @@ export const getPetById = async (id: string) => {
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account consent' });
+  provider.addScope('profile');
+  provider.addScope('email');
+  
   try {
     const result = await signInWithPopup(auth, provider);
     if (result.user) {
@@ -134,16 +118,22 @@ export const loginWithGoogle = async () => {
   }
 };
 
-export const logout = () => signOut(auth);
+export const logout = () => {
+  return signOut(auth);
+};
 
 export const loginWithIdentifier = async (identifier: string, password: string) => {
   let email = identifier.trim();
   if (!identifier.includes('@')) {
     const q = query(collection(db, "users"), where("username", "==", identifier.toLowerCase().trim()), limit(1));
     const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) return signInWithEmailAndPassword(auth, identifier, password);
+    if (querySnapshot.empty) {
+      return signInWithEmailAndPassword(auth, identifier, password);
+    }
     const userData = querySnapshot.docs[0].data();
-    if (!userData.email) throw { code: 'auth/invalid-credential', message: 'No email associated.' };
+    if (!userData.email) {
+      throw { code: 'auth/invalid-credential', message: 'No email associated with this username.' };
+    }
     email = userData.email;
   }
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -153,11 +143,16 @@ export const loginWithIdentifier = async (identifier: string, password: string) 
 
 export const signUpWithEmail = async (email: string, password: string, fullName: string, username: string) => {
   const isTaken = await isUsernameTaken(username, '');
-  if (isTaken) throw { code: 'auth/username-already-in-use', message: 'Username taken.' };
+  if (isTaken) {
+    throw { code: 'auth/username-already-in-use', message: 'This username is already taken.' };
+  }
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
   await updateProfile(user, { displayName: fullName });
-  await syncUserToDb(user, { displayName: fullName, username: username.toLowerCase().trim() });
+  await syncUserToDb(user, {
+    displayName: fullName,
+    username: username.toLowerCase().trim(),
+  });
   return user;
 };
 
@@ -165,64 +160,124 @@ export const updateUserProfile = async (uid: string, data: { displayName?: strin
   const { displayName, username, phoneNumber } = data;
   if (username) {
     const taken = await isUsernameTaken(username, uid);
-    if (taken) throw new Error("Username taken.");
+    if (taken) {
+      throw new Error("That username is already taken. Please try another.");
+    }
   }
+
   const user = auth.currentUser;
-  if (user && user.uid === uid && displayName && displayName !== user.displayName) {
-    await updateProfile(user, { displayName });
+  if (user && user.uid === uid) {
+    if (displayName && displayName !== user.displayName) {
+      await updateProfile(user, { displayName });
+    }
   }
+  
   const userRef = doc(db, "users", uid);
   const updateData: any = {};
   if (displayName !== undefined) updateData.displayName = displayName;
   if (username !== undefined) updateData.username = username.toLowerCase().trim();
   if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
-  if (Object.keys(updateData).length > 0) await updateDoc(userRef, updateData);
+
+  if (Object.keys(updateData).length > 0) {
+    await updateDoc(userRef, updateData);
+  }
 };
 
 export const startChat = async (currentUserId: string, targetUserId: string): Promise<string> => {
   const participants = [currentUserId, targetUserId].sort();
-  const q = query(collection(db, "chats"), where("participants", "==", participants), limit(1));
+  const q = query(
+    collection(db, "chats"),
+    where("participants", "==", participants),
+    limit(1)
+  );
   const querySnapshot = await getDocs(q);
-  if (!querySnapshot.empty) return querySnapshot.docs[0].id;
-  const newChatRef = await addDoc(collection(db, "chats"), { participants, lastMessage: '', createdAt: serverTimestamp(), lastTimestamp: serverTimestamp() });
+  if (!querySnapshot.empty) {
+    return querySnapshot.docs[0].id;
+  }
+  const newChatRef = await addDoc(collection(db, "chats"), {
+    participants,
+    lastMessage: '',
+    createdAt: serverTimestamp(),
+    lastTimestamp: serverTimestamp(),
+  });
   return newChatRef.id;
 };
 
 export const sendChatMessage = async (chatId: string, senderId: string, text: string) => {
   const chatRef = doc(db, "chats", chatId);
-  await addDoc(collection(chatRef, "messages"), { senderId, text, timestamp: serverTimestamp() });
-  await updateDoc(chatRef, { lastMessage: text, lastTimestamp: serverTimestamp() });
+  const messagesRef = collection(chatRef, "messages");
+  await addDoc(messagesRef, {
+    senderId,
+    text,
+    timestamp: serverTimestamp(),
+  });
+  await updateDoc(chatRef, {
+    lastMessage: text,
+    lastTimestamp: serverTimestamp(),
+  });
 };
 
 export const searchUsersByEmail = async (email: string, currentUserId: string) => {
   if (!email) return [];
-  const q = query(collection(db, "users"), where("email", "==", email.toLowerCase().trim()));
+  const q = query(
+    collection(db, "users"),
+    where("email", "==", email.toLowerCase().trim())
+  );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(user => user.id !== currentUserId);
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(user => user.id !== currentUserId);
 };
 
 export const followUser = async (currentUserId: string, targetUserId: string) => {
-  await setDoc(doc(db, 'users', currentUserId, 'following', targetUserId), { timestamp: serverTimestamp() });
-  await setDoc(doc(db, 'users', targetUserId, 'followers', currentUserId), { timestamp: serverTimestamp() });
+  const followingRef = doc(db, 'users', currentUserId, 'following', targetUserId);
+  await setDoc(followingRef, { timestamp: serverTimestamp() });
+  const followersRef = doc(db, 'users', targetUserId, 'followers', currentUserId);
+  await setDoc(followersRef, { timestamp: serverTimestamp() });
 };
 
 export const unfollowUser = async (currentUserId: string, targetUserId: string) => {
-  await deleteDoc(doc(db, 'users', currentUserId, 'following', targetUserId));
-  await deleteDoc(doc(db, 'users', targetUserId, 'followers', currentUserId));
+  const followingRef = doc(db, 'users', currentUserId, 'following', targetUserId);
+  await deleteDoc(followingRef);
+  const followersRef = doc(db, 'users', targetUserId, 'followers', currentUserId);
+  await deleteDoc(followersRef);
 };
 
-export const onFollowsUpdate = (userId: string, callback: (data: { following: string[], followers: string[] }) => void) => {
+export const onFollowsUpdate = (
+  userId: string,
+  callback: (data: { following: string[], followers: string[] }) => void
+) => {
+  const followingQuery = query(collection(db, 'users', userId, 'following'));
+  const followersQuery = query(collection(db, 'users', userId, 'followers'));
+
   let following: string[] = [];
   let followers: string[] = [];
-  const unsubFollowing = onSnapshot(query(collection(db, 'users', userId, 'following')), (snapshot) => {
+  let combinedData = { following, followers };
+
+  const unsubFollowing = onSnapshot(followingQuery, (snapshot) => {
     following = snapshot.docs.map(doc => doc.id);
-    callback({ following, followers });
+    combinedData = { ...combinedData, following };
+    callback(combinedData);
   });
-  const unsubFollowers = onSnapshot(query(collection(db, 'users', userId, 'followers')), (snapshot) => {
+
+  const unsubFollowers = onSnapshot(followersQuery, (snapshot) => {
     followers = snapshot.docs.map(doc => doc.id);
-    callback({ following, followers });
+    combinedData = { ...combinedData, followers };
+    callback(combinedData);
   });
-  return () => { unsubFollowing(); unsubFollowers(); };
+
+  return () => {
+    unsubFollowing();
+    unsubFollowers();
+  };
+};
+
+export const checkMutualFollow = async (userId1: string, userId2: string) => {
+  const user1Follows2Doc = await getDoc(doc(db, 'users', userId1, 'following', userId2));
+  if (!user1Follows2Doc.exists()) return false;
+  
+  const user2Follows1Doc = await getDoc(doc(db, 'users', userId2, 'following', userId1));
+  return user2Follows1Doc.exists();
 };
 
 export { onAuthStateChanged };
