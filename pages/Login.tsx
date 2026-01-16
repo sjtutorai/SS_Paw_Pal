@@ -48,13 +48,17 @@ const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError('');
+    
+    // Safety timeout to reset loading state if Firebase hangs
+    const timeout = setTimeout(() => setIsLoading(false), 30000);
+
     try {
       await loginWithGoogle();
-      // Redirection is now handled by the useEffect hook
     } catch (err: any) {
       setError(formatFirebaseError(err));
-    } finally {
       setIsLoading(false);
+    } finally {
+      clearTimeout(timeout);
     }
   };
 
@@ -63,24 +67,34 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setError('');
 
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        setIsLoading(false);
+        setError("Request timed out. Please check your connection and try again.");
+      }
+    }, 15000);
+
     try {
       if (isLogin) {
         await loginWithIdentifier(formData.identifier, formData.password);
       } else {
         await signUpWithEmail(formData.identifier, formData.password, formData.fullName, formData.username);
       }
-      // Redirection is now handled by the useEffect hook
     } catch (err: any) {
       setError(formatFirebaseError(err));
-    } finally {
       setIsLoading(false);
+    } finally {
+      clearTimeout(timeout);
+      // We don't always setIsLoading(false) here if successful 
+      // because navigate() will happen in the background
     }
   };
   
-  if (loading || user) {
+  if (loading || (user && !isLoading)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+        <Loader2 className="w-12 h-12 animate-spin text-theme transition-theme" />
       </div>
     );
   }
@@ -88,7 +102,7 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-5xl w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row transition-all duration-500 min-h-[600px]">
-        <div className="md:w-5/12 bg-indigo-600 p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="md:w-5/12 bg-theme p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden transition-theme">
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-10">
@@ -124,11 +138,11 @@ const Login: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Full Name</label>
-                    <input required name="fullName" type="text" placeholder="John Doe" value={formData.fullName} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                    <input required name="fullName" type="text" placeholder="John Doe" value={formData.fullName} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-theme outline-none transition-all" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Desired Username</label>
-                    <input required name="username" type="text" placeholder="johndoe" value={formData.username} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                    <input required name="username" type="text" placeholder="johndoe" value={formData.username} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-theme outline-none transition-all" />
                   </div>
                 </div>
               )}
@@ -137,7 +151,7 @@ const Login: React.FC = () => {
                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">{isLogin ? "Username or Email" : "Email Address"}</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-3.5 text-slate-400 w-4 h-4" />
-                  <input required name="identifier" type={isLogin ? "text" : "email"} placeholder={isLogin ? "Username or email" : "email@example.com"} value={formData.identifier} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                  <input required name="identifier" type={isLogin ? "text" : "email"} placeholder={isLogin ? "Username or email" : "email@example.com"} value={formData.identifier} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 text-sm focus:bg-white focus:ring-2 focus:ring-theme outline-none transition-all" />
                 </div>
               </div>
 
@@ -145,11 +159,11 @@ const Login: React.FC = () => {
                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 text-slate-400 w-4 h-4" />
-                  <input required name="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                  <input required name="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 text-sm focus:bg-white focus:ring-2 focus:ring-theme outline-none transition-all" />
                 </div>
               </div>
 
-              <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 text-white h-[56px] rounded-2xl font-bold text-base hover:bg-indigo-700 transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 mt-4 shadow-lg shadow-indigo-100">
+              <button type="submit" disabled={isLoading} className="w-full bg-theme text-white h-[56px] rounded-2xl font-bold text-base hover:bg-theme-hover transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 mt-4 shadow-lg shadow-theme/10 transition-theme">
                 {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> Verifying...</> : (isLogin ? "Sign In" : "Create Account")}
                 {!isLoading && <ArrowRight size={18} />}
               </button>
@@ -169,7 +183,7 @@ const Login: React.FC = () => {
             <div className="mt-8 text-center">
               <p className="text-slate-500 text-sm font-medium">
                 {isLogin ? "New to SS Paw Pal?" : "Already have an account?"}
-                <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="ml-2 text-indigo-600 font-bold hover:underline">
+                <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="ml-2 text-theme font-bold hover:underline transition-theme">
                   {isLogin ? "Join Now" : "Sign In"}
                 </button>
               </p>
