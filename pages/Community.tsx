@@ -16,9 +16,11 @@ import {
   Calendar as CalendarIcon,
   X,
   User as UserIcon,
-  MessageSquare
+  MessageSquare,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { db, startChat, checkMutualFollow } from '../services/firebase';
 import { useNavigate } from "react-router-dom";
 import { 
@@ -49,6 +51,7 @@ interface Post {
 
 const Community: React.FC = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const navigate = useNavigate();
   const [pet, setPet] = useState<any>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -62,7 +65,7 @@ const Community: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
 
-  // Effect for loading the user's primary pet for posting
+  // Load user's primary pet
   useEffect(() => {
     if (user?.uid) {
       const savedPet = localStorage.getItem(`ssp_pets_${user.uid}`);
@@ -71,13 +74,13 @@ const Community: React.FC = () => {
           const parsed = JSON.parse(savedPet);
           if (parsed.length > 0) setPet(parsed[0]);
         } catch (e) {
-          console.error("Failed to parse pet data from localStorage", e);
+          console.error("Failed to parse pet data", e);
         }
       }
     }
   }, [user]);
 
-  // Effect for fetching global community posts
+  // Fetch global feed
   useEffect(() => {
     setLoading(true);
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
@@ -91,14 +94,12 @@ const Community: React.FC = () => {
       setPosts(fetchedPosts);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching posts:", error);
-      setPosts([]); // Clear posts on error to avoid showing stale data
+      console.error("Firestore feed error:", error);
       setLoading(false);
     });
 
-    // Cleanup subscription on component unmount
     return () => unsubscribe();
-  }, []); // Empty dependency array ensures this runs once, which is correct for a global feed within a protected route
+  }, []);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,29 +114,41 @@ const Community: React.FC = () => {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostContent.trim() || !user) return;
+    
+    if (!newPostContent.trim()) {
+      addNotification('Empty Post', 'Please write something before sharing your moment!', 'warning');
+      return;
+    }
+
+    if (!user) {
+      addNotification('Auth Required', 'Please log in to share posts.', 'error');
+      return;
+    }
 
     setIsPosting(true);
 
     try {
-      await addDoc(collection(db, "posts"), {
+      const postPayload = {
         user: user.displayName || 'Pet Parent',
         avatar: user.photoURL || null,
         petName: pet?.name || 'My Pet',
         petType: pet?.species || 'Unknown',
-        content: newPostContent,
+        content: newPostContent.trim(),
         image: selectedImage || '',
         likes: 0,
         comments: 0,
         createdAt: serverTimestamp(),
         userId: user.uid
-      });
+      };
+
+      await addDoc(collection(db, "posts"), postPayload);
 
       setNewPostContent('');
       setSelectedImage(null);
-    } catch (error) {
-      console.error("Error creating post:", error);
-      alert("Failed to share post.");
+      addNotification('Moment Shared!', 'Your post is now live in the community feed.', 'success');
+    } catch (error: any) {
+      console.error("Post creation failed:", error);
+      addNotification('Posting Failed', 'We couldn\'t share your moment. Please try again.', 'error');
     } finally {
       setIsPosting(false);
     }
@@ -151,7 +164,7 @@ const Community: React.FC = () => {
         navigate(AppRoutes.CHAT);
       }
     } else {
-      alert("You and this user must follow each other to start a conversation.");
+      addNotification('Private Profile', 'Mutual follow required to start direct messaging.', 'info');
     }
   };
 
@@ -168,7 +181,7 @@ const Community: React.FC = () => {
   const formatTime = (createdAt: any) => {
     if (!createdAt) return 'Just now';
     const date = createdAt instanceof Timestamp ? createdAt.toDate() : new Date(createdAt);
-    return date.toLocaleDateString();
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -178,115 +191,142 @@ const Community: React.FC = () => {
         <p className="text-slate-500 font-medium">Shared by pet parents globally.</p>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
+      {/* Search Bar */}
+      <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
         <div className="relative">
-          <Search size={20} className="absolute left-5 top-4 text-slate-400" />
+          <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search moments..." 
-            className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3.5 pl-14 pr-12 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all" 
+            placeholder="Search moments by pet name or content..." 
+            className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-14 pr-12 text-sm font-medium text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-theme/10 transition-all" 
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-sm space-y-6">
+      {/* Create Post Form */}
+      <form onSubmit={handleCreatePost} className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-sm space-y-6">
         <div className="flex gap-4">
-          <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">
             {user?.photoURL ? (
               <img src={user.photoURL} alt="Me" className="w-full h-full object-cover" />
             ) : (
-              <UserIcon size={24} className="text-slate-400" />
+              <UserIcon size={24} className="text-slate-300" />
             )}
           </div>
           <textarea
+            required
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
-            placeholder={`What's ${pet?.name || 'your pet'} up to?`}
-            className="flex-1 bg-slate-50 border border-slate-50 rounded-[2rem] p-5 text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all resize-none min-h-[100px]"
+            placeholder={`What's ${pet?.name || 'your pet'} up to today?`}
+            className="flex-1 bg-slate-50 border border-slate-50 rounded-[2rem] p-6 text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-theme/5 transition-all resize-none min-h-[120px] font-medium"
           />
         </div>
 
         {selectedImage && (
-          <div className="relative w-32 h-32 rounded-2xl overflow-hidden group ml-16">
+          <div className="relative w-40 h-40 rounded-3xl overflow-hidden group ml-16 shadow-lg border-4 border-white">
             <img src={selectedImage} alt="Selected" className="w-full h-full object-cover" />
-            <button onClick={() => setSelectedImage(null)} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+            <button 
+              type="button"
+              onClick={() => setSelectedImage(null)} 
+              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+            >
               <X size={24} />
             </button>
           </div>
         )}
         
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-4 pl-16">
           <div className="flex items-center gap-2">
             <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageSelect} />
-            <button onClick={() => fileInputRef.current?.click()} className="p-3 text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-widest">
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()} 
+              className="px-6 py-3 text-theme hover:bg-theme-light rounded-2xl transition-all flex items-center gap-2 font-black text-[11px] uppercase tracking-widest"
+            >
               <ImageIcon size={18} />
-              Photo
+              Attach Moment
             </button>
           </div>
           
-          <button onClick={handleCreatePost} disabled={!newPostContent.trim() || isPosting} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50">
+          <button 
+            type="submit" 
+            disabled={isPosting} 
+            className="bg-theme text-white px-10 py-4 rounded-2xl font-black flex items-center gap-3 hover:bg-theme-hover transition-all shadow-xl shadow-theme/10 disabled:opacity-50 active:scale-95 transition-theme"
+          >
             {isPosting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-            Share
+            {isPosting ? 'Sharing...' : 'Share Now'}
           </button>
         </div>
-      </div>
+      </form>
 
-      <div className="space-y-10">
+      {/* Posts Feed */}
+      <div className="space-y-12">
         {loading ? (
-          <div className="py-20 text-center text-slate-400">Loading moments...</div>
+          <div className="py-20 text-center flex flex-col items-center gap-4">
+            <Loader2 size={40} className="animate-spin text-theme opacity-30" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Loading Feed Engine</p>
+          </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-100">
-            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
-              <Camera size={32} />
+          <div className="bg-white rounded-[3.5rem] p-24 text-center border border-slate-100">
+            <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 text-slate-200">
+              <Camera size={48} />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">No moments found</h3>
-            <p className="text-slate-500">Share your first memory!</p>
+            <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Feed is quiet...</h3>
+            <p className="text-slate-500 font-medium">Be the first to share a moment with the community!</p>
           </div>
         ) : filteredPosts.map((post) => (
-          <article key={post.id} className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden group">
-            <div className="p-8 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center border">
+          <article key={post.id} className="bg-white rounded-[4rem] border border-slate-100 shadow-sm overflow-hidden group hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500">
+            <div className="p-10 flex items-center justify-between">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center border border-slate-100 shadow-sm">
                   {post.avatar ? (
                     <img src={post.avatar} alt={post.user} className="w-full h-full object-cover" />
                   ) : (
-                    <UserIcon size={20} className="text-slate-400" />
+                    <UserIcon size={24} className="text-slate-300" />
                   )}
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-800">{post.user} <span className="text-indigo-600 font-bold ml-1">{post.petName}</span></h4>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{formatTime(post.createdAt)}</p>
+                  <h4 className="font-black text-slate-900 flex items-center gap-2">
+                    {post.user} 
+                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                    <span className="text-theme font-black">{post.petName}</span>
+                  </h4>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{formatTime(post.createdAt)}</p>
                 </div>
               </div>
               
               {user?.uid !== post.userId && (
                 <button 
                   onClick={() => handleMessageUser(post.userId)}
-                  className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                  className="p-4 bg-slate-50 text-slate-400 rounded-[1.5rem] hover:bg-theme hover:text-white transition-all shadow-sm group/btn"
                   title="Message Pet Parent"
                 >
-                  <MessageSquare size={20} />
+                  <MessageSquare size={20} className="group-hover/btn:scale-110 transition-transform" />
                 </button>
               )}
             </div>
 
-            <div className="px-8 pb-6 text-slate-700 font-medium text-lg leading-relaxed">
+            <div className="px-10 pb-8 text-slate-600 font-medium text-lg leading-relaxed">
               {post.content}
             </div>
 
             {post.image && (
-              <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                <img src={post.image} alt="Moment" className="w-full h-full object-cover" />
+              <div className="px-6 pb-6">
+                <div className="relative aspect-[16/10] bg-slate-100 overflow-hidden rounded-[3rem] shadow-inner">
+                  <img src={post.image} alt="Moment" className="w-full h-full object-cover" />
+                </div>
               </div>
             )}
 
-            <div className="p-8 flex items-center justify-between border-t border-slate-50">
+            <div className="p-8 px-10 flex items-center justify-between border-t border-slate-50 bg-slate-50/30">
               <div className="flex items-center gap-6">
-                <button className="flex items-center gap-2 font-black text-sm text-slate-500 hover:text-rose-500 transition-all">
-                  <div className="p-2.5 rounded-xl bg-slate-50"><Heart size={20} /></div>
-                  {post.likes}
+                <button className="flex items-center gap-3 font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-all group/like">
+                  <div className="p-3 rounded-2xl bg-white border border-slate-100 group-hover/like:bg-rose-50 group-hover/like:border-rose-100 shadow-sm">
+                    <Heart size={18} className="group-hover/like:fill-rose-500" />
+                  </div>
+                  {post.likes} Appreciation
                 </button>
               </div>
             </div>

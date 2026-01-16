@@ -32,7 +32,8 @@ const Login: React.FC = () => {
   }, [user, loading, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError('');
   };
 
@@ -128,7 +129,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your name" 
                 value={formData.fullName} 
                 onChange={handleChange} 
-                className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+                className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
               />
             </div>
           )}
@@ -144,7 +145,7 @@ const Login: React.FC = () => {
               placeholder={isLogin ? "Enter username or email" : "example@gmail.com"} 
               value={formData.identifier} 
               onChange={handleChange} 
-              className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+              className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
             />
           </div>
 
@@ -158,7 +159,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your Password" 
                 value={formData.password} 
                 onChange={handleChange} 
-                className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 pr-12 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+                className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 pr-12 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
               />
               <button 
                 type="button"
@@ -181,7 +182,7 @@ const Login: React.FC = () => {
                   placeholder="Please confirm your Password" 
                   value={formData.confirmPassword} 
                   onChange={handleChange} 
-                  className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 pr-12 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
+                  className="w-full bg-white border border-slate-200 rounded-lg py-3.5 px-4 pr-12 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400" 
                 />
                 <button 
                   type="button"
