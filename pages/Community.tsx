@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Heart, 
@@ -21,7 +20,10 @@ import {
   PawPrint,
   Check,
   MessageCircle,
-  Users
+  Users,
+  Dog,
+  Cat,
+  Bird
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -31,14 +33,14 @@ import {
   collection, 
   addDoc, 
   query, 
-  where, // Added missing where import
+  where,
   orderBy, 
   onSnapshot, 
   serverTimestamp,
   getDocs
 } from "firebase/firestore";
 import { GoogleGenAI } from "@google/genai";
-import { Post, PostComment } from '../types';
+import { Post, PostComment, PetProfile } from '../types';
 
 const PET_TYPES = ['All', 'Dog', 'Cat', 'Bird', 'Fish', 'Rabbit', 'Hamster', 'Reptile', 'Other'];
 
@@ -49,6 +51,9 @@ const IMAGE_FILTERS = [
   { name: 'Noir', class: 'grayscale contrast-125' },
   { name: 'Cinematic', class: 'contrast-125 brightness-90 saturate-75' },
   { name: 'Bright', class: 'brightness-125 contrast-90' },
+  { name: 'Vintage', class: 'sepia-[0.4] contrast-80 brightness-110 saturate-50' },
+  { name: 'Black & White', class: 'grayscale' },
+  { name: 'Sepia', class: 'sepia saturate-150' },
 ];
 
 const CommentSection: React.FC<{ postId: string, commentsCount: number }> = ({ postId, commentsCount }) => {
@@ -124,7 +129,8 @@ const CommentSection: React.FC<{ postId: string, commentsCount: number }> = ({ p
 const Community: React.FC = () => {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
-  const [pet, setPet] = useState<any>(null);
+  const [userPets, setUserPets] = useState<PetProfile[]>([]);
+  const [selectedPetForPost, setSelectedPetForPost] = useState<PetProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -143,17 +149,17 @@ const Community: React.FC = () => {
 
   useEffect(() => {
     if (user?.uid) {
-      const savedPet = localStorage.getItem(`ssp_pets_${user.uid}`);
-      if (savedPet) {
+      const savedPetsStr = localStorage.getItem(`ssp_pets_${user.uid}`);
+      if (savedPetsStr) {
         try {
-          const parsed = JSON.parse(savedPet);
-          if (parsed.length > 0) setPet(parsed[0]);
+          const parsed = JSON.parse(savedPetsStr);
+          setUserPets(parsed);
+          if (parsed.length > 0) setSelectedPetForPost(parsed[0]);
         } catch (e) {
           console.error("Failed to parse pet data", e);
         }
       }
 
-      // Fetch friends (uids of people user has chatted with)
       const fetchFriends = async () => {
         const q = query(collection(db, "chats"), where("participants", "array-contains", user.uid));
         const snap = await getDocs(q);
@@ -229,8 +235,8 @@ const Community: React.FC = () => {
       const postPayload = {
         user: user.displayName || 'Pet Parent',
         avatar: user.photoURL || null,
-        petName: pet?.name || 'My Companion',
-        petType: pet?.species || 'Other',
+        petName: selectedPetForPost?.name || 'My Companion',
+        petType: selectedPetForPost?.species || 'Other',
         content: newPostContent.trim(),
         image: selectedImage || '',
         imageFilter: activeFilter.class,
@@ -260,7 +266,6 @@ const Community: React.FC = () => {
                            (p.content?.toLowerCase() || '').includes(searchQuery.toLowerCase());
       const matchesType = typeFilter === 'All' || p.petType === typeFilter;
       
-      // Friends filter
       if (sortBy === 'friends' && p.userId !== user?.uid && !friendUids.has(p.userId)) {
         return false;
       }
@@ -327,23 +332,15 @@ const Community: React.FC = () => {
             onClick={() => setSortBy('friends')}
             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortBy === 'friends' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
-            <Users size={14} className="inline mr-1" /> Friends Only
+            <Users size={14} className="inline mr-1" /> Friends
           </button>
         </div>
       </div>
 
-      {/* Unified Stable Dashboard: Combined Post and Search */}
+      {/* Unified Dashboard */}
       <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 space-y-6">
-        {/* Top Row: User Avatar, Search Bar, and Filter */}
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-slate-100 shrink-0 overflow-hidden shadow-sm border border-slate-200">
-            {user?.photoURL ? (
-              <img src={user.photoURL} className="w-full h-full object-cover" />
-            ) : (
-              <UserIcon className="m-3 text-slate-300" />
-            )}
-          </div>
-          
+        {/* Search & Species Filter */}
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
@@ -351,32 +348,62 @@ const Community: React.FC = () => {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search by keywords or pet name..." 
-              className="w-full bg-slate-50/50 border border-slate-100 rounded-full py-4 pl-14 pr-4 text-sm font-medium text-slate-600 placeholder:text-slate-400 focus:ring-4 focus:ring-theme/5 outline-none transition-all" 
+              className="w-full bg-slate-50 border border-slate-100 rounded-full py-4 pl-14 pr-4 text-sm font-medium text-slate-600 focus:ring-4 focus:ring-theme/5 outline-none transition-all" 
             />
           </div>
 
-          <div className="relative shrink-0 hidden md:block">
-            <Filter size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <select 
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              className="bg-slate-50/50 border border-slate-100 rounded-full py-4 pl-12 pr-10 text-[11px] font-black uppercase tracking-[0.1em] text-slate-600 focus:ring-4 focus:ring-theme/5 appearance-none outline-none cursor-pointer"
-            >
-              {PET_TYPES.map(t => <option key={t} value={t}>{t === 'All' ? 'Every Species' : t}</option>)}
-            </select>
-            <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
+          <div className="flex bg-slate-50 border border-slate-100 rounded-full p-1 overflow-x-auto scroll-hide">
+             {PET_TYPES.map(type => (
+               <button
+                key={type}
+                onClick={() => setTypeFilter(type)}
+                className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${typeFilter === type ? 'bg-white text-theme shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+               >
+                 {type}
+               </button>
+             ))}
           </div>
         </div>
 
-        {/* Text Area for Creating Post */}
-        <textarea
-          value={newPostContent}
-          onChange={(e) => setNewPostContent(e.target.value)}
-          placeholder={`What's on your mind ${user?.displayName?.split(' ')[0] || ''}? Tell us about ${pet?.name || 'your pet'}...`}
-          className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl p-5 text-sm font-medium focus:ring-4 focus:ring-theme/5 resize-none h-28 outline-none transition-all"
-        />
+        {/* Text Area */}
+        <div className="flex gap-4 items-start">
+           <div className="w-12 h-12 rounded-xl bg-slate-100 shrink-0 overflow-hidden shadow-sm border border-slate-200">
+            {user?.photoURL ? (
+              <img src={user.photoURL} className="w-full h-full object-cover" />
+            ) : (
+              <UserIcon className="m-3 text-slate-300" />
+            )}
+          </div>
+          <textarea
+            value={newPostContent}
+            onChange={(e) => setNewPostContent(e.target.value)}
+            placeholder={`Tell us about ${selectedPetForPost?.name || 'your pet'}...`}
+            className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl p-5 text-sm font-medium focus:ring-4 focus:ring-theme/5 resize-none h-28 outline-none transition-all"
+          />
+        </div>
 
-        {/* Bottom Row: Actions and Post Button */}
+        {/* Pet Association */}
+        {userPets.length > 0 && (
+          <div className="space-y-3">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tag a Pet</p>
+             <div className="flex gap-3 overflow-x-auto pb-2 scroll-hide">
+               {userPets.map(pet => (
+                 <button 
+                  key={pet.id} 
+                  onClick={() => setSelectedPetForPost(pet)}
+                  className={`flex items-center gap-2 p-2 rounded-xl border-2 transition-all shrink-0 ${selectedPetForPost?.id === pet.id ? 'bg-theme-light border-theme shadow-sm' : 'bg-white border-slate-50'}`}
+                 >
+                   <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100">
+                     {pet.avatarUrl ? <img src={pet.avatarUrl} className="w-full h-full object-cover" /> : <PawPrint size={14} className="m-2 text-slate-300" />}
+                   </div>
+                   <span className={`text-[10px] font-black uppercase tracking-widest pr-2 ${selectedPetForPost?.id === pet.id ? 'text-theme' : 'text-slate-500'}`}>{pet.name}</span>
+                 </button>
+               ))}
+             </div>
+          </div>
+        )}
+
+        {/* Bottom Row */}
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
             <input 
@@ -416,26 +443,26 @@ const Community: React.FC = () => {
             disabled={isPosting || (!newPostContent.trim() && !selectedImage)} 
             className="bg-theme text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-theme-hover shadow-xl shadow-theme/20 transition-all disabled:opacity-50 disabled:shadow-none"
           >
-            {isPosting ? <Loader2 size={16} className="animate-spin" /> : 'Share Moment'}
+            {isPosting ? <Loader2 size={16} className="animate-spin" /> : 'Post Moment'}
           </button>
         </div>
 
         {selectedImage && (
           <div className="space-y-4 animate-in fade-in zoom-in-95 mt-4">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="relative w-full md:w-64 h-64 rounded-2xl overflow-hidden border-2 border-white shadow-lg bg-slate-100">
-                <img src={selectedImage} className={`w-full h-full object-cover transition-all duration-500 ${activeFilter.class}`} />
+              <div className="relative w-full md:w-64 h-64 rounded-2xl overflow-hidden border-2 border-white shadow-lg bg-slate-100 group">
+                <img src={selectedImage} className={`w-full h-full object-cover transition-all duration-700 ease-in-out ${activeFilter.class}`} />
                 <button onClick={() => setSelectedImage(null)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full backdrop-blur-sm hover:bg-black transition-all">
                   <X size={14} />
                 </button>
                 <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[8px] px-2 py-1 rounded font-black uppercase tracking-widest backdrop-blur-sm">
-                  AI Preset: {activeFilter.name}
+                  Preset: {activeFilter.name}
                 </div>
               </div>
               
               <div className="flex-1 space-y-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Sparkles size={14} className="text-theme" /> AI Image Enhancements
+                  <Sparkles size={14} className="text-theme" /> Studio Filters
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {IMAGE_FILTERS.map((f) => (
@@ -489,16 +516,16 @@ const Community: React.FC = () => {
               )}
               <div className="px-6 py-4 border-t border-slate-50 bg-slate-50/20 flex gap-6">
                 <button className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-widest">
-                  <Heart size={16} /> {post.likes} appreciation
+                  <Heart size={16} /> {post.likes}
                 </button>
                 <button 
                   onClick={() => toggleComments(post.id)}
                   className={`flex items-center gap-2 text-[10px] font-black transition-colors uppercase tracking-widest ${openComments[post.id] ? 'text-theme' : 'text-slate-400 hover:text-theme'}`}
                 >
-                  <MessageSquare size={16} /> {post.commentsCount || 0} Comments
+                  <MessageSquare size={16} /> {post.commentsCount || 0}
                 </button>
                 <button onClick={() => handleSharePost(post)} className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-theme transition-colors uppercase tracking-widest">
-                  <Share2 size={16} /> Share Moment
+                  <Share2 size={16} />
                 </button>
               </div>
               
