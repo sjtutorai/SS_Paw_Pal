@@ -13,6 +13,18 @@ interface NotificationItemProps {
   onMarkRead: (id: string) => void; 
 }
 
+// Safe date formatter to handle Firestore latency compensation (null timestamps)
+const formatTimestamp = (timestamp: any) => {
+  if (!timestamp) return 'Just now';
+  try {
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    if (isNaN(date.getTime())) return 'Just now';
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    return 'Just now';
+  }
+};
+
 const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -53,7 +65,9 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead }
           <p className="text-xs text-slate-500 font-medium leading-tight">
             {notif.type === 'follow_request' ? <><span className="font-bold">{notif.fromUserName}</span> wants to follow you.</> : notif.message}
           </p>
-          <p className="text-[9px] text-slate-300 font-bold uppercase mt-1">{new Date(notif.timestamp?.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+          <p className="text-[9px] text-slate-300 font-bold uppercase mt-1">
+            {formatTimestamp(notif.timestamp)}
+          </p>
         </div>
       </div>
 

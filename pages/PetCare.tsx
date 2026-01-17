@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { GoogleGenAI } from "@google/genai";
+import { PetProfile } from '../types';
 
 const ProgressBar: React.FC<{ label: string, value: number, color: string }> = ({ label, value, color }) => (
   <div className="space-y-2">
@@ -34,8 +35,8 @@ const ProgressBar: React.FC<{ label: string, value: number, color: string }> = (
 
 const PetCare: React.FC = () => {
   const { user } = useAuth();
-  const [pets, setPets] = useState<any[]>([]);
-  const [activePet, setActivePet] = useState<any>(null);
+  const [pets, setPets] = useState<PetProfile[]>([]);
+  const [activePet, setActivePet] = useState<PetProfile | null>(null);
   const [stats, setStats] = useState({ hunger: 70, energy: 40, happiness: 85 });
   const [isAnimating, setIsAnimating] = useState<string | null>(null);
   const [aiTip, setAiTip] = useState<string | null>(null);
@@ -64,7 +65,18 @@ const PetCare: React.FC = () => {
     setAiInsight(null);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Analyze this pet's profile: ${activePet.name} is a ${activePet.breed} ${activePet.species}, aged ${activePet.ageYears} years and ${activePet.ageMonths} months. Based on this life stage, provide ONE specific, professional health insight or observation about their dietary needs or physical development. Keep it concise (under 40 words).`;
+      // Expanded prompt for biological classification support
+      const prompt = `Analyze this pet's biological profile: ${activePet.name} is a ${activePet.breed} ${activePet.species}. 
+      Biological Class: ${activePet.petSpecies}. 
+      Age Stage: ${activePet.ageYears} years and ${activePet.ageMonths} months. 
+      
+      Instructions: 
+      1. Provide ONE specific, professional wellness insight related to their biological category (${activePet.petSpecies}).
+      2. If category is "Other", focus on general environmental enrichment.
+      3. For Amphibians/Insects/Reptiles, focus on habitat maintenance (humidity/temp/lighting).
+      4. DO NOT provide a medical diagnosis. 
+      5. Keep it under 40 words.`;
+
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
@@ -94,11 +106,15 @@ const PetCare: React.FC = () => {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `My pet is a ${activePet.breed} ${activePet.species}, aged ${activePet.ageYears} years and ${activePet.ageMonths} months. What is a healthy, species-appropriate treat or activity I can give them right now? Keep it under 50 words.`,
+        contents: `My pet is a ${activePet.breed} ${activePet.species} (${activePet.petSpecies}). 
+        Stage: ${activePet.ageYears}y ${activePet.ageMonths}m. 
+        What is a healthy, species-appropriate treat or environmental enrichment activity I can give them right now? 
+        If species is "Other", provide a safe general enrichment tip. 
+        Keep it under 50 words.`,
       });
-      setAiTip(response.text || "Fresh water and a gentle brush are always great!");
+      setAiTip(response.text || "Fresh habitat water and observation are always great!");
     } catch (e) {
-      setAiTip("A simple cuddle is the best treat for any age!");
+      setAiTip("A peaceful environment is the best treat for any companion!");
     }
   };
 
@@ -108,25 +124,25 @@ const PetCare: React.FC = () => {
     const months = parseInt(activePet.ageMonths || '0');
     const totalMonths = (years * 12) + months;
 
-    if (totalMonths === 4 || totalMonths === 5) {
+    if (activePet.petSpecies === 'Mammals' && (totalMonths === 4 || totalMonths === 5)) {
       return {
-        title: "🌟 Special Milestone: 4-5 Months Phase",
-        content: `Your ${activePet.species} is currently in a critical developmental stage! At ${totalMonths} months, expect significant teething behavior. Focus on gentle socialization, consistent potty training, and switching to juvenile food.`,
+        title: "🌟 Mammalian Milestone: Teething Phase",
+        content: `At ${totalMonths} months, expect significant developmental changes. Focus on gentle socialization and consistent training habits.`,
         icon: Baby,
         color: "bg-amber-100 border-amber-200 text-amber-900"
       };
-    } else if (totalMonths < 4) {
-      return {
-        title: "🍼 Early Development",
-        content: "Young pets need lots of sleep and small, frequent meals. Focus on bond-building and basic safety.",
-        icon: Heart,
-        color: "bg-indigo-50 border-indigo-100 text-indigo-900"
-      };
+    } else if (['Reptiles', 'Amphibians', 'Insects/Arthropods'].includes(activePet.petSpecies)) {
+       return {
+         title: "🌡️ Habitat Monitoring",
+         content: "For ectothermic companions, consistent environmental regulation is vital for metabolism and health.",
+         icon: Wind,
+         color: "bg-sky-50 border-sky-100 text-sky-900"
+       };
     } else {
       return {
-        title: "🐕 Growing Up Strong",
-        content: "Maintain a steady exercise routine and watch for adult behavioral changes. Annual checkups are key!",
-        icon: CheckCircle,
+        title: "🛡️ Proactive Wellness",
+        content: "Regular observation of activity levels and species-appropriate appetite is the cornerstone of long-term health.",
+        icon: Heart,
         color: "bg-emerald-50 border-emerald-100 text-emerald-900"
       };
     }
@@ -139,22 +155,22 @@ const PetCare: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-4xl font-black text-slate-900 tracking-tight">Wellness Portal</h2>
-          <p className="text-slate-500 font-medium">Monitoring {activePet?.name || 'your companion'}'s health and activity.</p>
+          <p className="text-slate-500 font-medium">Stage-specific monitoring for {activePet?.name || 'your companion'}.</p>
         </div>
         <div className="flex gap-4">
           <select 
             value={activePet?.id || ''} 
-            onChange={(e) => setActivePet(pets.find(p => p.id === e.target.value))}
-            className="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-bold shadow-sm outline-none"
+            onChange={(e) => setActivePet(pets.find(p => p.id === e.target.value) || null)}
+            className="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-bold shadow-sm outline-none cursor-pointer focus:ring-4 focus:ring-theme/5 transition-all"
           >
-            {pets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {pets.map(p => <option key={p.id} value={p.id}>{p.name} ({p.species})</option>)}
           </select>
           <button 
             onClick={askAiForTreat}
             className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-black transition-all active:scale-95 shadow-xl"
           >
             <Bot size={18} />
-            Treat Suggester
+            Care Tips
           </button>
         </div>
       </div>
@@ -189,15 +205,15 @@ const PetCare: React.FC = () => {
               </button>
               <button onClick={() => handleAction('sleep')} className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:bg-theme hover:text-white hover:shadow-xl transition-all group flex flex-col items-center gap-3">
                 <Moon className="text-theme group-hover:text-white" />
-                <span className="font-black text-xs uppercase tracking-widest">Sleep</span>
+                <span className="font-black text-xs uppercase tracking-widest">Rest</span>
               </button>
               <button onClick={() => handleAction('walk')} className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:bg-theme hover:text-white hover:shadow-xl transition-all group flex flex-col items-center gap-3">
                 <Map className="text-theme group-hover:text-white" />
-                <span className="font-black text-xs uppercase tracking-widest">Walk</span>
+                <span className="font-black text-xs uppercase tracking-widest">Activity</span>
               </button>
               <button onClick={() => handleAction('play')} className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:bg-theme hover:text-white hover:shadow-xl transition-all group flex flex-col items-center gap-3">
                 <Zap className="text-theme group-hover:text-white" />
-                <span className="font-black text-xs uppercase tracking-widest">Play</span>
+                <span className="font-black text-xs uppercase tracking-widest">Enrich</span>
               </button>
             </div>
           </div>
@@ -217,9 +233,9 @@ const PetCare: React.FC = () => {
           <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-8">
             <h3 className="font-black text-xl text-slate-800 uppercase tracking-widest">Vital Metrics</h3>
             <div className="space-y-6">
-              <ProgressBar label="Fullness" value={stats.hunger} color="bg-amber-500" />
-              <ProgressBar label="Energy" value={stats.energy} color="bg-theme" />
-              <ProgressBar label="Happiness" value={stats.happiness} color="bg-rose-500" />
+              <ProgressBar label="Maintenance" value={stats.hunger} color="bg-amber-500" />
+              <ProgressBar label="Vigor" value={stats.energy} color="bg-theme" />
+              <ProgressBar label="Welfare" value={stats.happiness} color="bg-rose-500" />
             </div>
           </div>
 
@@ -228,19 +244,19 @@ const PetCare: React.FC = () => {
                <Sparkles size={80} />
             </div>
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-theme mb-4 flex items-center gap-2">
-               <Bot size={14}/> Specialist Insight
+               <Bot size={14}/> Biological Insight
             </h4>
             {isLoadingInsight ? (
               <div className="py-4 flex items-center gap-3">
                 <Loader2 size={20} className="animate-spin text-theme" />
-                <span className="text-xs font-bold text-slate-400">Analyzing biological stage...</span>
+                <span className="text-xs font-bold text-slate-400">Syncing stage context...</span>
               </div>
             ) : aiInsight ? (
               <p className="text-sm font-medium leading-relaxed italic animate-in fade-in slide-in-from-left-4">
                 "{aiInsight}"
               </p>
             ) : (
-              <p className="text-xs text-slate-400">Select a companion to generate stage-specific health intelligence.</p>
+              <p className="text-xs text-slate-400">Select a profile to activate automated biological tracking.</p>
             )}
           </div>
 

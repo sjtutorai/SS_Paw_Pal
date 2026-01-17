@@ -26,12 +26,15 @@ const FindFriends: React.FC = () => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    if (!searchText.trim()) return users;
-    const query = searchText.toLowerCase();
-    return users.filter(u => 
-      u.displayName?.toLowerCase().includes(query) || 
-      u.username?.toLowerCase().includes(query)
-    );
+    const query = searchText.toLowerCase().trim();
+    if (!query) return users;
+    
+    return users.filter(u => {
+      // Robust safety checks for displayName and username
+      const name = (u.displayName || '').toLowerCase();
+      const handle = (u.username || '').toLowerCase();
+      return name.includes(query) || handle.includes(query);
+    });
   }, [users, searchText]);
 
   return (
@@ -71,7 +74,7 @@ const FindFriends: React.FC = () => {
         ) : filteredUsers.length === 0 ? (
           <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
             <UserIcon size={48} className="mx-auto text-slate-100 mb-4" />
-            <h4 className="font-black text-slate-400 uppercase tracking-widest">No users match your criteria</h4>
+            <h4 className="font-black text-slate-400 uppercase tracking-widest">No users match your search</h4>
           </div>
         ) : (
           filteredUsers.map((user) => (
@@ -82,7 +85,7 @@ const FindFriends: React.FC = () => {
               <Link to={`/user/${user.username}`} className="shrink-0 relative">
                 <div className="w-16 h-16 rounded-[1.5rem] overflow-hidden bg-slate-100 border-2 border-white shadow-lg group-hover:scale-105 transition-transform duration-500">
                   <img 
-                    src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}&background=random`} 
+                    src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`} 
                     alt={user.displayName || ''} 
                     className="w-full h-full object-cover" 
                   />
@@ -90,12 +93,12 @@ const FindFriends: React.FC = () => {
               </Link>
               
               <div className="flex-1 min-w-0">
-                <Link to={`/user/${user.username}`} className="block">
+                <Link to={`/user/${user.username || user.uid}`} className="block">
                   <h4 className="font-black text-slate-900 text-lg leading-tight truncate group-hover:text-theme transition-colors">
-                    {user.displayName}
+                    {user.displayName || 'Anonymous Parent'}
                   </h4>
                   <div className="flex items-center gap-1 text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">
-                    <AtSign size={10} /> {user.username}
+                    <AtSign size={10} /> {user.username || 'unidentified'}
                   </div>
                 </Link>
               </div>
@@ -103,7 +106,7 @@ const FindFriends: React.FC = () => {
               <div className="shrink-0 flex items-center gap-3">
                 <FollowButton targetUserId={user.uid} />
                 <Link 
-                  to={`/user/${user.username}`}
+                  to={`/user/${user.username || user.uid}`}
                   className="p-3 text-slate-300 hover:text-theme hover:bg-theme-light rounded-xl transition-all"
                 >
                   <ArrowRight size={20} />

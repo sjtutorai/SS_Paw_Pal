@@ -45,7 +45,8 @@ export interface PetProfile {
   id: string;
   ownerId: string;
   name: string;
-  species: string;
+  species: string; // The specific common name (e.g., "Dog")
+  petSpecies: string; // The biological category (e.g., "Mammal")
   breed: string;
   birthday: string;
   bio: string;
@@ -61,13 +62,13 @@ export interface PetProfile {
   lowercaseName?: string;
 }
 
-// FIX: Add missing Post interface used in Community.tsx
 export interface Post {
   id: string;
   user: string;
   avatar: string | null;
   petName: string;
-  petType: string;
+  petType: string; // Used for species label (e.g., "Cat")
+  petSpecies: string; // Used for category label (e.g., "Mammal")
   content: string;
   image?: string;
   likes: number;
@@ -105,10 +106,9 @@ export interface AppNotification {
   type: 'info' | 'success' | 'warning' | 'error' | 'follow_request';
   timestamp: any;
   read: boolean;
-  // Fields for user-to-user notifications
   fromUserId?: string;
   fromUserName?: string;
-  relatedId?: string; // e.g., the ID of the follow document
+  relatedId?: string;
 }
 
 export type FollowStatus = 'not_following' | 'pending' | 'following' | 'is_self';

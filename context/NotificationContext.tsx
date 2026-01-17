@@ -41,7 +41,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const q = query(
       collection(db, "notifications"),
       where("userId", "==", user.uid),
-      orderBy("createdAt", "desc"),
+      orderBy("timestamp", "desc"), // Corrected to use 'timestamp' instead of 'createdAt'
       limit(20)
     );
 
@@ -71,7 +71,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         message,
         type,
         read: false,
-        createdAt: serverTimestamp(),
+        timestamp: serverTimestamp(), // Corrected to use 'timestamp' instead of 'createdAt'
       });
     } catch (error) {
       console.error("Failed to add notification:", error);
