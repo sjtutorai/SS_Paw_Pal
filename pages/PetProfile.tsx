@@ -7,7 +7,8 @@ import { syncPetToDb, getPetById, getPetsByOwnerId, deletePet } from '../service
 import jsQR from 'jsqr';
 import { 
   Dog, Plus, PawPrint, Camera, CheckCircle2, Bird, Fish, Thermometer,  
-  Trash2, Stethoscope, Brain, Wand2, Scan, X, Syringe, TrendingUp, Loader2, Palette, Sparkles, Bug, Droplets, AlertTriangle
+  Trash2, Stethoscope, Brain, Wand2, Scan, X, Syringe, TrendingUp, Loader2, Palette, Sparkles, Bug, Droplets, AlertTriangle,
+  Layers, Ghost, Brush, Rocket
 } from 'lucide-react';
 import { PetProfile, WeightRecord, VaccinationRecord } from '../types';
 
@@ -35,6 +36,14 @@ export const PET_CATEGORIES = [
   { id: 'other', name: 'Other', icon: Sparkles, species: ['Other'] }
 ];
 
+const AVATAR_STYLES = [
+  { id: 'realistic', name: 'Realistic', icon: Camera, prompt: 'Cinematic, realistic 4K portrait, highly detailed, professional photography' },
+  { id: 'cartoon', name: '3D Pixar', icon: Ghost, prompt: 'Cute 3D Pixar-style animation character, vibrant colors, soft lighting, expressive eyes' },
+  { id: 'watercolor', name: 'Watercolor', icon: Brush, prompt: 'Beautiful watercolor painting, soft edges, artistic splashes, delicate paper texture' },
+  { id: 'oil', name: 'Oil Painting', icon: Palette, prompt: 'Classical oil painting, rich textures, expressive brushstrokes, dramatic Rembrandt lighting' },
+  { id: 'cyberpunk', name: 'Cyberpunk', icon: Rocket, prompt: 'Neon-lit cyberpunk aesthetic, futuristic vibe, glowing accents, synthwave color palette' }
+];
+
 const calculateAge = (birthday: string) => {
   if (!birthday) return { years: 0, months: 0 };
   const birthDate = new Date(birthday);
@@ -55,6 +64,8 @@ const PetProfilePage: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAddingRecord, setIsAddingRecord] = useState<'vaccine' | 'weight' | null>(null);
+  const [isStylePickerOpen, setIsStylePickerOpen] = useState(false);
+  const [selectedStyleId, setSelectedStyleId] = useState('realistic');
   const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
   const [step, setStep] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
@@ -162,9 +173,12 @@ const PetProfilePage: React.FC = () => {
   const generateAIAvatar = async (base64Source?: string) => {
     if (!selectedPet) return;
     setIsGeneratingAvatar(true);
+    setIsStylePickerOpen(false);
+    const style = AVATAR_STYLES.find(s => s.id === selectedStyleId) || AVATAR_STYLES[0];
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `A cinematic, realistic 4K portrait of a ${selectedPet.breed} ${selectedPet.species} named ${selectedPet.name} (${selectedPet.petSpecies}).`;
+      const prompt = `A ${style.prompt} of a ${selectedPet.breed} ${selectedPet.species} named ${selectedPet.name} (${selectedPet.petSpecies}). High resolution, detailed.`;
       const contents: any = { parts: [{ text: prompt }] };
       if (base64Source) contents.parts.push({ inlineData: { data: base64Source.split(',')[1], mimeType: 'image/png' } });
       const response = await ai.models.generateContent({ model: 'gemini-2.5-flash-image', contents, config: { imageConfig: { aspectRatio: "1:1" } } });
@@ -173,6 +187,7 @@ const PetProfilePage: React.FC = () => {
           const updatedPet = { ...selectedPet, avatarUrl: `data:image/png;base64,${part.inlineData.data}` };
           await savePet(updatedPet);
           setSelectedPet(updatedPet);
+          addNotification('AI Studio', 'Profile avatar updated!', 'success');
           break;
         }
       }
@@ -251,7 +266,7 @@ const PetProfilePage: React.FC = () => {
               <div className="w-52 h-52 rounded-[3.5rem] overflow-hidden mx-auto shadow-2xl relative border-4 border-white group">
                 {selectedPet.avatarUrl ? <img src={selectedPet.avatarUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-200"><Dog size={64} /></div>}
                 {isGeneratingAvatar && <div className="absolute inset-0 bg-white/40 backdrop-blur-md flex items-center justify-center"><Loader2 size={32} className="animate-spin text-theme" /></div>}
-                <button onClick={() => generateAIAvatar()} className="absolute bottom-4 right-4 p-3 bg-slate-900 text-theme rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"><Wand2 size={20}/></button>
+                <button onClick={() => setIsStylePickerOpen(true)} className="absolute bottom-4 right-4 p-3 bg-slate-900 text-theme rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"><Wand2 size={20}/></button>
               </div>
               <div>
                 <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{selectedPet.name}</h3>
@@ -337,6 +352,43 @@ const PetProfilePage: React.FC = () => {
           <button onClick={() => { setStep(1); setIsAdding(true); }} className="mt-10 bg-theme text-white px-12 py-5 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-theme/20 hover:bg-theme-hover active:scale-95 transition-all">
             Begin First Registration
           </button>
+        </div>
+      )}
+
+      {/* Style Picker Modal for AI Generation */}
+      {isStylePickerOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[3rem] p-10 max-w-xl w-full shadow-2xl animate-in zoom-in-95 overflow-hidden">
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 className="text-2xl font-black tracking-tight">AI Style Studio</h3>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Select visual aesthetic for {selectedPet?.name}</p>
+                    </div>
+                    <button onClick={() => setIsStylePickerOpen(false)} className="p-2 text-slate-400 hover:text-slate-900"><X size={20} /></button>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar mb-8">
+                    {AVATAR_STYLES.map(style => (
+                        <button 
+                            key={style.id} 
+                            onClick={() => setSelectedStyleId(style.id)}
+                            className={`p-5 rounded-2xl flex items-center gap-4 transition-all border-2 ${selectedStyleId === style.id ? 'bg-theme-light border-theme' : 'bg-slate-50 border-transparent hover:bg-slate-100'}`}
+                        >
+                            <div className={`p-3 rounded-xl ${selectedStyleId === style.id ? 'bg-theme text-white' : 'bg-white text-slate-400'}`}>
+                                <style.icon size={20} />
+                            </div>
+                            <span className={`font-black text-xs uppercase tracking-widest ${selectedStyleId === style.id ? 'text-theme' : 'text-slate-500'}`}>{style.name}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex gap-4">
+                    <button onClick={generateAIAvatar} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3">
+                        <Sparkles size={18} /> Generate Avatar
+                    </button>
+                    <button onClick={() => setIsStylePickerOpen(false)} className="px-8 bg-slate-100 text-slate-500 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
+                </div>
+            </div>
         </div>
       )}
 

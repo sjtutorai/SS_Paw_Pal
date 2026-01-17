@@ -65,17 +65,19 @@ const PetCare: React.FC = () => {
     setAiInsight(null);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      // Expanded prompt for biological classification support
-      const prompt = `Analyze this pet's biological profile: ${activePet.name} is a ${activePet.breed} ${activePet.species}. 
-      Biological Class: ${activePet.petSpecies}. 
-      Age Stage: ${activePet.ageYears} years and ${activePet.ageMonths} months. 
-      
+      const prompt = `Analyze this pet's biological profile for professional wellness observation:
+      Name: ${activePet.name}
+      Breed/Species: ${activePet.breed} ${activePet.species}
+      Category: ${activePet.petSpecies}
+      Age: ${activePet.ageYears} years, ${activePet.ageMonths} months
+      Existing Health Notes: ${activePet.healthNotes || 'No specific notes recorded'}
+
       Instructions: 
-      1. Provide ONE specific, professional wellness insight related to their biological category (${activePet.petSpecies}).
-      2. If category is "Other", focus on general environmental enrichment.
-      3. For Amphibians/Insects/Reptiles, focus on habitat maintenance (humidity/temp/lighting).
-      4. DO NOT provide a medical diagnosis. 
-      5. Keep it under 40 words.`;
+      1. Provide ONE specific, professional wellness insight focused on their biological life-stage or category.
+      2. Mention a specific behavioral or dietary observation relevant to this profile.
+      3. For seniors, focus on joint/organ health. For young pets, focus on developmental enrichment.
+      4. DO NOT provide a medical diagnosis. Keep it authoritative yet caring.
+      5. Max 45 words.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
