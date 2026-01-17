@@ -90,13 +90,8 @@ const PetProfilePage: React.FC = () => {
         if (firestorePets.length > 0) setSelectedPet(firestorePets[0]);
         localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(firestorePets));
       } catch (e) {
-        // Fallback to local storage if network fails
         const saved = localStorage.getItem(`ssp_pets_${user.uid}`);
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            setPets(parsed);
-            if (parsed.length > 0) setSelectedPet(parsed[0]);
-        }
+        if (saved) setPets(JSON.parse(saved));
       } finally {
         setIsLoading(false);
       }
@@ -104,55 +99,37 @@ const PetProfilePage: React.FC = () => {
     fetchPets();
   }, [user?.uid]);
 
-  const updateLocalAndRemote = async (updatedPets: PetProfile[]) => {
-    if (!user) return;
-    setPets(updatedPets);
-    localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(updatedPets));
+  const savePet = async (pet: PetProfile) => {
+    await syncPetToDb(pet);
+    const updated = await getPetsByOwnerId(user!.uid);
+    setPets(updated);
+    localStorage.setItem(`ssp_pets_${user!.uid}`, JSON.stringify(updated));
+    return updated;
   };
 
   const handleAddPet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
-    // 1. Prepare Data
     const id = `SSP-${Date.now()}`;
     const { years, months } = calculateAge(newPet.birthday || '');
     const completePet: PetProfile = { 
         ...newPet as PetProfile, 
-        id, 
-        ownerId: user.uid, 
-        ownerName: user.displayName || 'Parent', 
-        ageYears: String(years), 
-        ageMonths: String(months), 
-        weightHistory: [], 
-        vaccinations: [], 
-        isPublic: false,
+        id, ownerId: user.uid, ownerName: user.displayName || 'Parent', 
+        ageYears: String(years), ageMonths: String(months), 
+        weightHistory: [], vaccinations: [], isPublic: false,
         lowercaseName: newPet.name?.toLowerCase() || ''
     };
-
-    // 2. Optimistic Update (Instant Feedback)
-    const updatedPets = [...pets, completePet];
-    setPets(updatedPets);
+    await savePet(completePet);
     setSelectedPet(completePet);
     setSaveSuccess(true);
-    setIsAdding(false); // Close immediately for snapiness
     
-    // Update local storage immediately
-    localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(updatedPets));
-    addNotification('Success', 'Companion registered successfully!', 'success');
-
-    // 3. Background Sync
-    try {
-        await syncPetToDb(completePet);
-    } catch (err) {
-        console.error("Sync failed:", err);
-        addNotification('Sync Warning', 'Saved locally. Will sync when online.', 'warning');
-    }
-
-    // Reset Form
-    setStep(1);
-    setNewPet(initialPetState);
-    setTimeout(() => setSaveSuccess(false), 500);
+    // Snappy auto-close and state reset
+    setTimeout(() => { 
+      setIsAdding(false); 
+      setSaveSuccess(false); 
+      setStep(1); 
+      setNewPet(initialPetState);
+    }, 1200);
   };
 
   const handleDeletePet = async () => {
@@ -162,48 +139,35 @@ const PetProfilePage: React.FC = () => {
     if (!window.confirm(confirmMessage)) return;
 
     setIsDeleting(true);
-    const petIdToDelete = selectedPet.id;
-    
-    // 1. Optimistic Update
-    const updatedPets = pets.filter(p => p.id !== petIdToDelete);
-    setPets(updatedPets);
-    if (updatedPets.length > 0) setSelectedPet(updatedPets[0]);
-    else setSelectedPet(null);
-    localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(updatedPets));
-    
-    addNotification('Registry Updated', 'Profile removed.', 'info');
-    setIsDeleting(false); // UI is done
-
-    // 2. Background Sync
     try {
-      await deletePet(petIdToDelete);
+      await deletePet(selectedPet.id);
+      const updated = await getPetsByOwnerId(user.uid);
+      setPets(updated);
+      localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(updated));
+      
+      addNotification('Registry Updated', `${selectedPet.name}'s profile has been removed.`, 'info');
+      
+      // Select next pet or null
+      if (updated.length > 0) setSelectedPet(updated[0]);
+      else setSelectedPet(null);
+      
     } catch (err) {
-      console.error("Delete failed:", err);
+      addNotification('Registry Error', 'Failed to remove companion profile.', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPet || !user) return;
-    
+    if (!selectedPet) return;
     let updatedPet = { ...selectedPet };
-    if (isAddingRecord === 'vaccine') {
-        updatedPet.vaccinations = [...(updatedPet.vaccinations || []), { name: newRecord.name, date: newRecord.date, nextDueDate: newRecord.nextDueDate }];
-    } else {
-        updatedPet.weightHistory = [...(updatedPet.weightHistory || []), { date: newRecord.date, weight: parseFloat(newRecord.weight) }];
-    }
-
-    // Optimistic Update
-    const updatedPets = pets.map(p => p.id === updatedPet.id ? updatedPet : p);
-    setPets(updatedPets);
+    if (isAddingRecord === 'vaccine') updatedPet.vaccinations = [...(updatedPet.vaccinations || []), { name: newRecord.name, date: newRecord.date, nextDueDate: newRecord.nextDueDate }];
+    else updatedPet.weightHistory = [...(updatedPet.weightHistory || []), { date: newRecord.date, weight: parseFloat(newRecord.weight) }];
+    await savePet(updatedPet);
     setSelectedPet(updatedPet);
-    localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(updatedPets));
-    
     setIsAddingRecord(null);
     setNewRecord({ name: '', date: new Date().toISOString().split('T')[0], weight: '', nextDueDate: '' });
-
-    // Background Sync
-    await syncPetToDb(updatedPet);
   };
 
   const generateAIAvatar = async (base64Source?: string) => {
@@ -221,14 +185,8 @@ const PetProfilePage: React.FC = () => {
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData) {
           const updatedPet = { ...selectedPet, avatarUrl: `data:image/png;base64,${part.inlineData.data}` };
-          
-          // Optimistic Update for Image
-          const updatedPets = pets.map(p => p.id === updatedPet.id ? updatedPet : p);
-          setPets(updatedPets);
+          await savePet(updatedPet);
           setSelectedPet(updatedPet);
-          if (user) localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(updatedPets));
-          
-          await syncPetToDb(updatedPet);
           addNotification('AI Studio', 'Profile avatar updated!', 'success');
           break;
         }
@@ -266,6 +224,7 @@ const PetProfilePage: React.FC = () => {
 
       {isAdding ? (
         <div className="max-w-2xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-100 relative animate-in zoom-in-95 duration-300">
+          {saveSuccess && <div className="absolute inset-0 bg-theme/95 flex flex-col items-center justify-center z-50 text-white rounded-[2.5rem] animate-in fade-in"><CheckCircle2 size={48} className="animate-bounce"/><h3 className="text-2xl font-black mt-4">Companion Registered</h3><p className="text-[10px] font-black uppercase tracking-widest mt-2 opacity-60">Syncing Intelligence...</p></div>}
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-black">Step {step}: {step === 1 ? 'Select Domain' : 'Details'}</h2>
             <button onClick={() => setIsAdding(false)} className="p-2 text-slate-300 hover:text-slate-500 transition-colors"><X size={20} /></button>
@@ -306,16 +265,7 @@ const PetProfilePage: React.FC = () => {
               <div className="w-52 h-52 rounded-[3.5rem] overflow-hidden mx-auto shadow-2xl relative border-4 border-white group">
                 {selectedPet.avatarUrl ? <img src={selectedPet.avatarUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-200"><Dog size={64} /></div>}
                 {isGeneratingAvatar && <div className="absolute inset-0 bg-white/40 backdrop-blur-md flex items-center justify-center"><Loader2 size={32} className="animate-spin text-theme" /></div>}
-                
-                {/* AI Style Picker Button - Always visible now */}
-                <button 
-                    onClick={() => setIsStylePickerOpen(true)} 
-                    className="absolute bottom-4 right-4 px-4 py-3 bg-slate-900 text-theme rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 z-10"
-                    title="Open AI Studio"
-                >
-                    <Wand2 size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">AI Studio</span>
-                </button>
+                <button onClick={() => setIsStylePickerOpen(true)} className="absolute bottom-4 right-4 p-3 bg-slate-900 text-theme rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"><Wand2 size={20}/></button>
               </div>
               <div>
                 <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{selectedPet.name}</h3>
