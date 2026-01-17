@@ -306,7 +306,16 @@ const PetProfilePage: React.FC = () => {
               <div className="w-52 h-52 rounded-[3.5rem] overflow-hidden mx-auto shadow-2xl relative border-4 border-white group">
                 {selectedPet.avatarUrl ? <img src={selectedPet.avatarUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-200"><Dog size={64} /></div>}
                 {isGeneratingAvatar && <div className="absolute inset-0 bg-white/40 backdrop-blur-md flex items-center justify-center"><Loader2 size={32} className="animate-spin text-theme" /></div>}
-                <button onClick={() => setIsStylePickerOpen(true)} className="absolute bottom-4 right-4 p-3 bg-slate-900 text-theme rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"><Wand2 size={20}/></button>
+                
+                {/* AI Style Picker Button - Always visible now */}
+                <button 
+                    onClick={() => setIsStylePickerOpen(true)} 
+                    className="absolute bottom-4 right-4 px-4 py-3 bg-slate-900 text-theme rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 z-10"
+                    title="Open AI Studio"
+                >
+                    <Wand2 size={18} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white">AI Studio</span>
+                </button>
               </div>
               <div>
                 <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{selectedPet.name}</h3>
