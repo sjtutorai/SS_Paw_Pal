@@ -35,8 +35,13 @@ const Chat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // FIX: Refactored to handle cases where other chat participant might not exist, preventing crashes.
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setSessions([]);
+      setLoading(false);
+      return;
+    }
 
     const q = query(
       collection(db, "chats"),
@@ -44,27 +49,41 @@ const Chat: React.FC = () => {
       orderBy("lastTimestamp", "desc")
     );
 
-    // Fix: Refactored the async onSnapshot callback into a stable function to fix scoping and syntax errors.
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const updateSessionsList = async () => {
-        const sessionData = await Promise.all(snapshot.docs.map(async (d) => {
+        const sessionPromises = snapshot.docs.map(async (d): Promise<ChatSession | null> => {
           const data = d.data();
           const otherId = data.participants.find((p: string) => p !== user.uid);
-          const userDoc = await getDoc(doc(db, "users", otherId));
-          const userData = userDoc.data();
+          
+          if (!otherId) {
+            return null;
+          }
 
-          return {
-            id: d.id,
-            ...data,
-            otherUser: {
-              uid: otherId,
-              displayName: userData?.displayName || 'Unknown User',
-              photoURL: userData?.photoURL || '',
-              phoneNumber: userData?.phoneNumber || '',
-              username: userData?.username || ''
+          try {
+            const userDoc = await getDoc(doc(db, "users", otherId));
+            if (!userDoc.exists()) {
+              return null; // The other user's document doesn't exist.
             }
-          } as ChatSession;
-        }));
+            const userData = userDoc.data();
+
+            return {
+              id: d.id,
+              ...data,
+              otherUser: {
+                uid: otherId,
+                displayName: userData?.displayName || 'Unknown User',
+                photoURL: userData?.photoURL || '',
+                phoneNumber: userData?.phoneNumber || '',
+                username: userData?.username || ''
+              }
+            } as ChatSession;
+          } catch (error) {
+            console.error(`Error fetching user data for ${otherId}`, error);
+            return null;
+          }
+        });
+
+        const sessionData = (await Promise.all(sessionPromises)).filter(Boolean) as ChatSession[];
         setSessions(sessionData);
         setLoading(false);
       };

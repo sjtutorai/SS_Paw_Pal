@@ -1,15 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, User as UserIcon, Trash2, CheckCircle2, AlertTriangle, Info, Search, Loader2 } from 'lucide-react';
+import { Menu, Bell, User as UserIcon, Trash2, CheckCircle2, AlertTriangle, Info, Search, Loader2, UserPlus, Check, X } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
-// Fix: Import AppNotification from types instead of NotificationContext since it is not exported from there
 import { useNotifications } from '../context/NotificationContext';
 import { Link, useLocation } from "react-router-dom";
 import { AppRoutes, AppNotification } from '../types';
 
 const NotificationItem: React.FC<{ notif: AppNotification; onMarkRead: (id: string) => void }> = ({ notif, onMarkRead }) => {
-  const Icon = notif.type === 'warning' ? AlertTriangle : notif.type === 'success' ? CheckCircle2 : Info;
-  const colorClass = notif.type === 'warning' ? 'text-amber-500 bg-amber-50' : notif.type === 'success' ? 'text-emerald-500 bg-emerald-50' : 'text-indigo-500 bg-indigo-50';
+  const { handleFollowAction } = useNotifications();
+  const [isHandling, setIsHandling] = useState(false);
+
+  const onActionClick = async (action: 'accept' | 'decline') => {
+    if (isHandling || !notif.relatedId) return;
+    setIsHandling(true);
+    await handleFollowAction(notif.id, notif.relatedId, action);
+    // No need to set isHandling(false) as the component will re-render with updated data.
+  };
+
+  const Icon = notif.type === 'warning' ? AlertTriangle : 
+               notif.type === 'success' ? CheckCircle2 : 
+               notif.type === 'follow_request' ? UserPlus : Info;
+               
+  const colorClass = notif.type === 'warning' ? 'text-amber-500 bg-amber-50' : 
+                     notif.type === 'success' ? 'text-emerald-500 bg-emerald-50' :
+                     notif.type === 'follow_request' ? 'text-sky-500 bg-sky-50' : 'text-indigo-500 bg-indigo-50';
 
   return (
     <div 
@@ -22,7 +36,25 @@ const NotificationItem: React.FC<{ notif: AppNotification; onMarkRead: (id: stri
       <div className="flex-1">
         <h5 className="text-[11px] font-black text-slate-800 uppercase tracking-tight leading-none mb-1.5">{notif.title}</h5>
         <p className="text-xs text-slate-500 font-medium leading-relaxed">{notif.message}</p>
-        <p className="text-[9px] text-slate-300 font-black uppercase mt-2">Received · Just Now</p>
+        
+        {notif.type === 'follow_request' && !notif.read && (
+          <div className="mt-4 flex items-center gap-2">
+            {isHandling ? (
+              <Loader2 size={16} className="animate-spin text-slate-400" />
+            ) : (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); onActionClick('accept'); }} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all">
+                  <Check size={14} /> Accept
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onActionClick('decline'); }} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">
+                  <X size={14} /> Decline
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        <p className="text-[9px] text-slate-300 font-black uppercase mt-3">Received · Just Now</p>
       </div>
     </div>
   );
@@ -97,7 +129,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </button>
 
               {isNotifOpen && (
-                <div className="absolute right-0 mt-4 w-80 bg-white rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 origin-top-right">
+                <div className="absolute right-0 mt-4 w-96 bg-white rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 origin-top-right">
                   <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Alerts</h4>
                     <button onClick={clearAll} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={14}/></button>
