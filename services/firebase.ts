@@ -189,9 +189,9 @@ export const getUsersPaginated = async (pageSize: number, lastDoc: QueryDocument
         limit(pageSize)
       );
     } else {
+      // Simplified query for initial fetch to ensure data comes back
       q = query(
         collection(db, "users"), 
-        orderBy(documentId()), 
         limit(pageSize)
       );
     }
