@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SS Paw Pal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dazlddxht/image/upload/v1768234409/SS_Paw_Pal_Logo_aceyn8.png">
     <style>
         :root {
@@ -20,6 +20,7 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
         }
         /* Native Preloader Styles */
         #preloader {
@@ -50,41 +51,22 @@
         }
         
         /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* Dynamic Theme Utilities */
+        /* Global Utilities */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .bg-theme { background-color: var(--theme-color) !important; }
-        .bg-theme-hover:hover { background-color: var(--theme-color-hover) !important; }
-        .bg-theme-light { background-color: var(--theme-color-light) !important; }
-        .bg-theme-surface { background-color: var(--theme-surface) !important; }
         .text-theme { color: var(--theme-color) !important; }
-        .text-theme-hover:hover { color: var(--theme-color-hover) !important; }
         .border-theme { border-color: var(--theme-color) !important; }
-        .ring-theme:focus { --tw-ring-color: var(--theme-color) !important; }
-
-        /* Scanning Animation */
-        @keyframes scan-beam {
-          0% { top: 0; }
-          50% { top: 100%; }
-          100% { top: 0; }
-        }
-        .animate-scan-beam {
-          animation: scan-beam 2s ease-in-out infinite;
-        }
     </style>
     <script>
-        // Immediate Theme Application to prevent FOUC
         (function() {
             const savedTheme = localStorage.getItem('ssp_theme_color') || '#4f46e5';
-            const savedSurface = localStorage.getItem('ssp_surface_color') || '#334155';
             const root = document.documentElement;
             root.style.setProperty('--theme-color', savedTheme);
-            root.style.setProperty('--theme-color-hover', savedTheme + 'dd'); 
-            root.style.setProperty('--theme-color-light', savedTheme + '15');
-            root.style.setProperty('--theme-surface', savedSurface);
         })();
     </script>
 <script type="importmap">
@@ -107,7 +89,7 @@
 <body>
     <div id="preloader">
         <div class="spinner"></div>
-        <p style="margin-top: 20px; font-weight: 800; font-size: 12px; color: #64748b; letter-spacing: 0.2em; text-transform: uppercase;">SS Paw Pal Loading</p>
+        <p style="margin-top: 20px; font-weight: 800; font-size: 11px; color: #94a3b8; letter-spacing: 0.3em; text-transform: uppercase;">Initializing Engine</p>
     </div>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
