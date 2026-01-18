@@ -49,11 +49,13 @@ export interface PetProfile {
   breed: string;
   birthday: string;
   bio: string;
+  temperament?: string;
   avatarUrl?: string;
   qrCodeUrl?: string;
   ageYears?: string;
   ageMonths?: string;
   healthNotes?: string;
+  preferredStyle?: string;
   weightHistory: WeightRecord[];
   vaccinations: VaccinationRecord[];
   isPublic: boolean;
