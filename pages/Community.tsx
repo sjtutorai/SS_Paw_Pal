@@ -1,285 +1,188 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Heart, 
-  MessageCircle, 
-  Share2, 
-  Plus, 
-  Image as ImageIcon, 
-  Send, 
-  MoreHorizontal,
-  Smile,
-  CheckCircle2,
-  Camera,
-  Loader2,
-  Search,
-  Filter,
-  Calendar as CalendarIcon,
-  X,
-  User as UserIcon,
-  MessageSquare
+  Heart, Share2, Image as ImageIcon, Search, Filter, X, 
+  User as UserIcon, ChevronDown, TrendingUp, Clock, Wand2, Loader2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { db, startChat, checkMutualFollow } from '../services/firebase';
-import { useNavigate } from "react-router-dom";
+import { useNotifications } from '../context/NotificationContext';
+import { db } from '../services/firebase';
 import { 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  serverTimestamp,
-  Timestamp 
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp 
 } from "firebase/firestore";
-import { AppRoutes } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import { PetProfile, Post } from '../types';
+import { Link } from 'react-router-dom';
+import FollowButton from '../components/FollowButton';
 
-interface Post {
-  id: string;
-  user: string;
-  avatar: string | null;
-  petName: string;
-  petType?: string;
-  content: string;
-  image: string;
-  likes: number;
-  comments: number;
-  createdAt: any;
-  isUser?: boolean;
-  userId: string;
-}
+const PET_TYPES = ['All', 'Dog', 'Cat', 'Bird', 'Fish', 'Rabbit', 'Hamster', 'Reptile', 'Other'];
 
 const Community: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [pet, setPet] = useState<any>(null);
+  const { addNotification } = useNotifications();
+  const [pet, setPet] = useState<PetProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
+  const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
 
   useEffect(() => {
-    const savedPet = localStorage.getItem(`ssp_pets_${user?.uid}`);
-    if (savedPet) {
-      const parsed = JSON.parse(savedPet);
-      if (parsed.length > 0) setPet(parsed[0]);
+    if (user?.uid) {
+      const savedPet = localStorage.getItem(`ssp_pets_${user.uid}`);
+      if (savedPet) {
+        try {
+          const parsed = JSON.parse(savedPet);
+          if (parsed.length > 0) setPet(parsed[0]);
+        } catch (e) { console.error("Failed to parse pet data", e); }
+      }
     }
+  }, [user]);
 
+  useEffect(() => {
+    setLoading(true);
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedPosts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Post[];
-      
+      const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Post[];
       setPosts(fetchedPosts);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching posts:", error);
+      console.error("Firestore feed error:", error);
       setLoading(false);
     });
-
     return () => unsubscribe();
-  }, [user]);
+  }, []);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleEnhanceWithAI = async () => {
+    if (!newPostContent.trim()) { addNotification('AI Assistant', 'Draft a message first!', 'info'); return; }
+    setIsEnhancing(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Enhance this pet social media caption: "${newPostContent}". Make it engaging, add relevant pet hashtags, and keep it under 40 words.`,
+      });
+      if (response.text) { setNewPostContent(response.text.trim()); addNotification('AI Magical Touch', 'Caption enhanced!', 'success'); }
+    } catch (error) { addNotification('AI Engine Error', 'Could not enhance caption.', 'error'); } 
+    finally { setIsEnhancing(false); }
   };
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostContent.trim() || !user) return;
-
+    if (isPosting || (!newPostContent.trim() && !selectedImage) || !user) return;
     setIsPosting(true);
-
     try {
       await addDoc(collection(db, "posts"), {
         user: user.displayName || 'Pet Parent',
         avatar: user.photoURL || null,
-        petName: pet?.name || 'My Pet',
-        petType: pet?.species || 'Unknown',
-        content: newPostContent,
+        petName: pet?.name || 'My Companion',
+        petType: pet?.species || 'Other',
+        content: newPostContent.trim(),
         image: selectedImage || '',
         likes: 0,
         comments: 0,
         createdAt: serverTimestamp(),
         userId: user.uid
       });
-
       setNewPostContent('');
       setSelectedImage(null);
-    } catch (error) {
-      console.error("Error creating post:", error);
-      alert("Failed to share post.");
-    } finally {
-      setIsPosting(false);
-    }
-  };
-
-  const handleMessageUser = async (targetUserId: string) => {
-    if (!user || user.uid === targetUserId) return;
-
-    const areMutuals = await checkMutualFollow(user.uid, targetUserId);
-    if (areMutuals) {
-      const chatId = await startChat(user.uid, targetUserId);
-      if (chatId) {
-        navigate(AppRoutes.CHAT);
-      }
-    } else {
-      alert("You and this user must follow each other to start a conversation.");
-    }
+      addNotification('Moment Shared', 'Your post is now visible.', 'success');
+    } catch (error: any) { addNotification('Posting Error', 'Check connection and try again.', 'error'); } 
+    finally { setIsPosting(false); }
   };
 
   const filteredPosts = useMemo(() => {
-    let result = [...posts];
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(p => p.content.toLowerCase().includes(q) || p.petName.toLowerCase().includes(q));
-    }
-    if (typeFilter !== 'All') result = result.filter(p => p.petType === typeFilter);
+    let result = posts.filter(p => {
+      const matchesSearch = (p.petName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || (p.content?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+      const matchesType = typeFilter === 'All' || p.petType === typeFilter;
+      return matchesSearch && matchesType;
+    });
+    if (sortBy === 'popular') result.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     return result;
-  }, [posts, searchQuery, typeFilter]);
+  }, [posts, searchQuery, typeFilter, sortBy]);
 
-  const formatTime = (createdAt: any) => {
-    if (!createdAt) return 'Just now';
-    const date = createdAt instanceof Timestamp ? createdAt.toDate() : new Date(createdAt);
-    return date.toLocaleDateString();
+  const handleSharePost = async (post: Post) => {
+    if (navigator.share) {
+      await navigator.share({ title: `${post.petName}'s Moment`, text: post.content, url: window.location.href });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      addNotification('Link Copied', 'URL copied to clipboard.', 'success');
+    }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-10 pb-32 animate-fade-in">
-      <div>
-        <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Community Feed</h2>
-        <p className="text-slate-500 font-medium">Shared by pet parents globally.</p>
-      </div>
-
-      <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
-        <div className="relative">
-          <Search size={20} className="absolute left-5 top-4 text-slate-400" />
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search moments..." 
-            className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3.5 pl-14 pr-12 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all" 
-          />
+    <div className="space-y-10 animate-fade-in px-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-4">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Community Feed</h2>
+          <p className="text-slate-500 font-medium text-sm">See what's happening in the pet world.</p>
+        </div>
+        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+          <button onClick={() => setSortBy('newest')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortBy === 'newest' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}><Clock size={14} className="inline mr-1" /> New</button>
+          <button onClick={() => setSortBy('popular')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortBy === 'popular' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}><TrendingUp size={14} className="inline mr-1" /> Popular</button>
         </div>
       </div>
 
-      <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-sm space-y-6">
-        <div className="flex gap-4">
-          <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt="Me" className="w-full h-full object-cover" />
-            ) : (
-              <UserIcon size={24} className="text-slate-400" />
-            )}
+      <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 shrink-0 overflow-hidden shadow-sm border border-slate-200">
+            {user?.photoURL ? <img src={user.photoURL} className="w-full h-full object-cover" /> : <UserIcon className="m-3 text-slate-300" />}
           </div>
-          <textarea
-            value={newPostContent}
-            onChange={(e) => setNewPostContent(e.target.value)}
-            placeholder={`What's ${pet?.name || 'your pet'} up to?`}
-            className="flex-1 bg-slate-50 border border-slate-50 rounded-[2rem] p-5 text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all resize-none min-h-[100px]"
-          />
+          <div className="flex-1 relative">
+            <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search moments..." className="w-full bg-slate-50/50 border border-slate-100 rounded-full py-4 pl-14 pr-4 text-sm font-medium focus:ring-4 focus:ring-theme/5 outline-none" />
+          </div>
+          <div className="relative shrink-0 hidden md:block">
+            <Filter size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="bg-slate-50/50 border border-slate-100 rounded-full py-4 pl-12 pr-10 text-[11px] font-black uppercase tracking-[0.1em] focus:ring-4 focus:ring-theme/5 appearance-none outline-none">
+              {PET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300" />
+          </div>
         </div>
-
-        {selectedImage && (
-          <div className="relative w-32 h-32 rounded-2xl overflow-hidden group ml-16">
-            <img src={selectedImage} alt="Selected" className="w-full h-full object-cover" />
-            <button onClick={() => setSelectedImage(null)} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-              <X size={24} />
-            </button>
+        <textarea value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)} placeholder={`What's on your mind, ${user?.displayName?.split(' ')[0] || ''}?`} className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl p-5 text-sm font-medium focus:ring-4 focus:ring-theme/5 resize-none h-28 outline-none" />
+        <div className="flex items-center justify-between">
+          <div className="flex gap-2">
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setSelectedImage(reader.result as string); reader.readAsDataURL(file); } }} />
+            <button type="button" onClick={() => fileInputRef.current?.click()} className={`p-3.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-100 shadow-sm border ${selectedImage ? 'border-theme' : 'border-slate-100'}`}><ImageIcon size={20} className={selectedImage ? 'text-theme' : ''} /></button>
+            <button type="button" onClick={handleEnhanceWithAI} disabled={isEnhancing} className="p-3.5 bg-slate-900 text-theme rounded-xl hover:bg-black shadow-md border border-slate-800">{isEnhancing ? <Loader2 size={20} className="animate-spin text-white" /> : <Wand2 size={20} />}</button>
           </div>
-        )}
-        
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2">
-            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageSelect} />
-            <button onClick={() => fileInputRef.current?.click()} className="p-3 text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-widest">
-              <ImageIcon size={18} />
-              Photo
-            </button>
-          </div>
-          
-          <button onClick={handleCreatePost} disabled={!newPostContent.trim() || isPosting} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50">
-            {isPosting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-            Share
+          <button onClick={handleCreatePost} disabled={isPosting || (!newPostContent.trim() && !selectedImage)} className="bg-theme text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-theme-hover shadow-xl shadow-theme/20 disabled:opacity-50">
+            {isPosting ? <Loader2 size={16} className="animate-spin" /> : 'Share Moment'}
           </button>
         </div>
+        {selectedImage && <div className="relative w-40 h-40 rounded-2xl overflow-hidden border-2 shadow-lg"><img src={selectedImage} className="w-full h-full object-cover" /><button onClick={() => setSelectedImage(null)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full backdrop-blur-sm"><X size={14} /></button></div>}
       </div>
 
-      <div className="space-y-10">
-        {loading ? (
-          <div className="py-20 text-center text-slate-400">Loading moments...</div>
-        ) : filteredPosts.length === 0 ? (
-          <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-100">
-            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
-              <Camera size={32} />
-            </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">No moments found</h3>
-            <p className="text-slate-500">Share your first memory!</p>
-          </div>
-        ) : filteredPosts.map((post) => (
-          <article key={post.id} className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden group">
-            <div className="p-8 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center border">
-                  {post.avatar ? (
-                    <img src={post.avatar} alt={post.user} className="w-full h-full object-cover" />
-                  ) : (
-                    <UserIcon size={20} className="text-slate-400" />
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-black text-slate-800">{post.user} <span className="text-indigo-600 font-bold ml-1">{post.petName}</span></h4>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{formatTime(post.createdAt)}</p>
-                </div>
+      <div className="space-y-12 mt-12">
+        {loading ? <div className="py-20 text-center"><Loader2 size={32} className="animate-spin text-slate-200 mx-auto" /></div>
+         : filteredPosts.length === 0 ? <div className="py-20 text-center bg-white rounded-3xl border-dashed border-slate-200 text-slate-300 font-black uppercase text-xs">No Moments Found</div>
+         : (
+          filteredPosts.map(post => (
+            <article key={post.id} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all">
+              <div className="p-6 flex items-center justify-between">
+                <Link to={`/user/${post.user.toLowerCase().replace(/\s/g, '')}`} className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border"><img src={post.avatar || `https://ui-avatars.com/api/?name=${post.user}`} className="w-full h-full object-cover" /></div>
+                  <div>
+                    <h4 className="font-black text-slate-900 text-sm leading-none">{post.user} · <span className="text-theme">{post.petName}</span></h4>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{post.petType}</p>
+                  </div>
+                </Link>
+                <FollowButton targetUserId={post.userId} />
               </div>
-              
-              {user?.uid !== post.userId && (
-                <button 
-                  onClick={() => handleMessageUser(post.userId)}
-                  className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                  title="Message Pet Parent"
-                >
-                  <MessageSquare size={20} />
-                </button>
-              )}
-            </div>
-
-            <div className="px-8 pb-6 text-slate-700 font-medium text-lg leading-relaxed">
-              {post.content}
-            </div>
-
-            {post.image && (
-              <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                <img src={post.image} alt="Moment" className="w-full h-full object-cover" />
+              <div className="px-6 pb-6 text-slate-700 font-medium">{post.content}</div>
+              {post.image && <div className="px-4 pb-4"><img src={post.image} className="w-full h-auto rounded-[1.5rem] shadow-xl" /></div>}
+              <div className="px-6 py-4 border-t border-slate-50 bg-slate-50/20 flex gap-6">
+                <button className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest"><Heart size={16} /> {post.likes} Likes</button>
+                <button onClick={() => handleSharePost(post)} className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-theme uppercase tracking-widest"><Share2 size={16} /> Share</button>
               </div>
-            )}
-
-            <div className="p-8 flex items-center justify-between border-t border-slate-50">
-              <div className="flex items-center gap-6">
-                <button className="flex items-center gap-2 font-black text-sm text-slate-500 hover:text-rose-500 transition-all">
-                  <div className="p-2.5 rounded-xl bg-slate-50"><Heart size={20} /></div>
-                  {post.likes}
-                </button>
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export enum AppRoutes {
@@ -13,7 +12,6 @@ export enum AppRoutes {
   PRIVACY = '/privacy',
   CHAT = '/chat',
   FIND_FRIENDS = '/find-friends',
-  PUBLIC_PET_PROFILE = '/v/:petId',
 }
 
 export interface NavItem {
@@ -29,6 +27,7 @@ export interface User {
   photoURL: string | null;
   phoneNumber?: string;
   username?: string;
+  lowercaseDisplayName?: string;
 }
 
 export interface WeightRecord {
@@ -59,6 +58,22 @@ export interface PetProfile {
   vaccinations: VaccinationRecord[];
   isPublic: boolean;
   ownerName: string;
+  lowercaseName?: string;
+}
+
+// FIX: Add missing Post interface used in Community.tsx
+export interface Post {
+  id: string;
+  user: string;
+  avatar: string | null;
+  petName: string;
+  petType: string;
+  content: string;
+  image?: string;
+  likes: number;
+  comments: number;
+  createdAt: any;
+  userId: string;
 }
 
 export interface ChatMessage {
@@ -82,3 +97,18 @@ export interface ChatSession {
     username?: string;
   };
 }
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'follow_request';
+  timestamp: any;
+  read: boolean;
+  // Fields for user-to-user notifications
+  fromUserId?: string;
+  fromUserName?: string;
+  relatedId?: string; // e.g., the ID of the follow document
+}
+
+export type FollowStatus = 'not_following' | 'pending' | 'following' | 'is_self';

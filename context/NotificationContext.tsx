@@ -1,136 +1,102 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { PetProfile } from '../types';
-
-export interface AppNotification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  timestamp: string;
-  read: boolean;
-}
+import { db } from '../services/firebase';
+// FIX: import 'limit' from firestore
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, limit } from 'firebase/firestore';
+import { AppNotification } from '../types';
 
 interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
-  permissionStatus: NotificationPermission;
   addNotification: (title: string, message: string, type?: AppNotification['type']) => void;
   markAsRead: (id: string) => void;
   clearAll: () => void;
-  requestPermission: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+// FIX: Add missing STAT_ROUTINE export used in Home.tsx
+export const STAT_ROUTINE = [
+  { id: 1, task: 'Morning Walk', timeLabel: '07:00 AM - 08:00 AM', startHour: 7, endHour: 8 },
+  { id: 2, task: 'Breakfast Time', timeLabel: '08:00 AM - 09:00 AM', startHour: 8, endHour: 9 },
+  { id: 3, task: 'Mid-day Play', timeLabel: '11:00 AM - 12:00 PM', startHour: 11, endHour: 12 },
+  { id: 4, task: 'Lunch', timeLabel: '01:00 PM - 02:00 PM', startHour: 13, endHour: 14 },
+  { id: 5, task: 'Afternoon Nap', timeLabel: '02:00 PM - 04:00 PM', startHour: 14, endHour: 16 },
+  { id: 6, task: 'Evening Stroll', timeLabel: '05:00 PM - 06:00 PM', startHour: 17, endHour: 18 },
+  { id: 7, task: 'Dinner', timeLabel: '07:00 PM - 08:00 PM', startHour: 19, endHour: 20 },
+  { id: 8, task: 'Bedtime Cuddles', timeLabel: '09:00 PM - 10:00 PM', startHour: 21, endHour: 22 },
+];
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>(
-    'Notification' in window ? Notification.permission : 'denied'
-  );
-  
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    if (!user) return [];
-    const saved = localStorage.getItem(`notifications_${user?.uid}`);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // Listen for real-time notifications from Firestore
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(20)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedNotifications = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as AppNotification[];
+      setNotifications(fetchedNotifications);
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`notifications_${user.uid}`, JSON.stringify(notifications));
-    }
-  }, [notifications, user]);
-
-  const requestPermission = useCallback(async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      setPermissionStatus(permission);
-    }
-  }, []);
-
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      requestPermission();
-    }
-  }, [requestPermission]);
-
-  const addNotification = useCallback((title: string, message: string, type: AppNotification['type'] = 'info') => {
-    const newNotif: AppNotification = {
-      id: Date.now().toString(),
-      title,
-      message,
-      type,
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-
-    setNotifications(prev => [newNotif, ...prev].slice(0, 20));
-
-    if ('Notification' in window && Notification.permission === 'granted') {
-      try {
-        new Notification(title, {
-          body: message,
-          icon: 'https://res.cloudinary.com/dazlddxht/image/upload/v1768234409/SS_Paw_Pal_Logo_aceyn8.png'
-        });
-      } catch (e) {
-        console.error("Failed to trigger system notification", e);
-      }
-    }
-  }, []);
-
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const clearAll = () => {
-    setNotifications([]);
-  };
-
-  useEffect(() => {
-    if (!user) return;
-
-    const checkReminders = () => {
-      const savedPet = localStorage.getItem(`pet_${user.uid}`);
-      if (!savedPet) return;
-      const pet: PetProfile = JSON.parse(savedPet);
-
-      pet.vaccinations?.forEach(v => {
-        if (!v.nextDueDate) return;
-        const dueDate = new Date(v.nextDueDate);
-        const today = new Date();
-        const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (diffDays <= 7 && diffDays > 0) {
-          const alreadyNotified = notifications.some(n => n.message.includes(v.name) && n.timestamp.startsWith(today.toISOString().split('T')[0]));
-          if (!alreadyNotified && localStorage.getItem('ssp_pref_vaccines') !== 'false') {
-            addNotification('Vaccination Reminder', `${pet.name}'s ${v.name} booster is due in ${diffDays} days!`, 'warning');
-          }
-        }
+  const addNotification = useCallback(async (title: string, message: string, type: AppNotification['type'] = 'info') => {
+    if (!user) return; // Can't send notification if no user is logged in
+    
+    // This function is now for creating local/system notifications that need to be stored for the current user
+    try {
+      await addDoc(collection(db, "notifications"), {
+        userId: user.uid,
+        title,
+        message,
+        type,
+        read: false,
+        createdAt: serverTimestamp(),
       });
+    } catch (error) {
+      console.error("Failed to add notification:", error);
+    }
+  }, [user]);
 
-      if (pet.weightHistory?.length > 0 && localStorage.getItem('ssp_pref_weight') !== 'false') {
-        const lastLog = new Date(pet.weightHistory[pet.weightHistory.length - 1].date);
-        const today = new Date();
-        const diffDays = Math.ceil((today.getTime() - lastLog.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays >= 30) {
-          const alreadyNotified = notifications.some(n => n.title === 'Weight Check' && n.timestamp.startsWith(today.toISOString().split('T')[0]));
-          if (!alreadyNotified) {
-            addNotification('Weight Check', `It's been a month since ${pet.name}'s last weight log.`, 'info');
-          }
-        }
-      }
-    };
-
-    const interval = setInterval(checkReminders, 60000 * 60);
-    checkReminders();
-    return () => clearInterval(interval);
-  }, [user, addNotification, notifications]);
+  const markAsRead = async (id: string) => {
+    if (!user) return;
+    const notifRef = doc(db, "notifications", id);
+    try {
+      await updateDoc(notifRef, { read: true });
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+  
+  const clearAll = async () => {
+    if (!user) return;
+    // For simplicity, we'll just clear the local state. A real implementation might batch delete.
+    setNotifications([]);
+    // This is a complex operation on the backend, for now, we remove them visually.
+  };
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, permissionStatus, addNotification, markAsRead, clearAll, requestPermission }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, clearAll }}>
       {children}
     </NotificationContext.Provider>
   );
