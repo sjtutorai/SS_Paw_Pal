@@ -7,7 +7,7 @@ import { syncPetToDb, getPetById } from '../services/firebase';
 import jsQR from 'jsqr';
 import { 
   Dog, Plus, PawPrint, Camera, CheckCircle2, Bird, Fish, Thermometer,  
-  Trash2, Stethoscope, Brain, Wand2, Scan, X, Syringe, TrendingUp, Loader2, QrCode, ArrowRight
+  Trash2, Stethoscope, Brain, Wand2, Scan, X, Syringe, TrendingUp, Loader2, QrCode, ArrowRight, Palette, Sparkles
 } from 'lucide-react';
 import { PetProfile, WeightRecord, VaccinationRecord, AppRoutes } from '../types';
 
@@ -26,6 +26,14 @@ export const PET_CATEGORIES = [
   { id: 'bird', name: 'Birds', icon: Bird, species: ['Parrot', 'Parakeet', 'Cockatiel', 'Lovebird'] },
   { id: 'fish', name: 'Fish', icon: Fish, species: ['Goldfish', 'Betta Fish', 'Guppy'] },
   { id: 'reptile', name: 'Reptiles', icon: Thermometer, species: ['Turtle', 'Tortoise', 'Lizard'] },
+];
+
+const AVATAR_STYLES = [
+  { id: 'realistic', name: 'Realistic', description: 'Studio lighting & 4K textures', prompt: 'A cinematic, ultra-high-quality professional studio avatar portrait. Detailed fur, vibrant lighting, 4K resolution, macro photography style.' },
+  { id: 'animation', name: 'Animation', description: 'Pixar-inspired 3D character', prompt: 'A cute, 3D animated style character portrait. Pixar/Disney style, expressive eyes, vibrant colors, clean lines, high-end CGI.' },
+  { id: 'watercolor', name: 'Watercolor', description: 'Dreamy & soft brushstrokes', prompt: 'A beautiful, delicate watercolor painting. Soft brushstrokes, artistic splatters, dreamy atmosphere, elegant paper texture background.' },
+  { id: 'oil', name: 'Oil Painting', description: 'Majestic classical portrait', prompt: 'A classic, majestic oil painting portrait. Rich textures, deep colors, masterful lighting, baroque museum style, heavy canvas feel.' },
+  { id: 'cyberpunk', name: 'Cyberpunk', description: 'Neon lights & futuristic tech', prompt: 'A futuristic cyberpunk themed portrait. Neon lights, mechanical enhancements, synthwave aesthetic, dark city background, high-tech glow.' },
 ];
 
 const calculateAge = (birthday: string) => {
@@ -48,6 +56,7 @@ const PetProfilePage: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingRecord, setIsAddingRecord] = useState<'vaccine' | 'weight' | null>(null);
   const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [showStyleModal, setShowStyleModal] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [step, setStep] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
@@ -143,16 +152,22 @@ const PetProfilePage: React.FC = () => {
     addNotification('Record Deleted', 'Health log removed.', 'info');
   };
 
-  const generateAIAvatar = async (base64Source?: string) => {
+  const generateAIAvatar = async (styleId: string, base64Source?: string) => {
     if (!selectedPet) return;
+    const style = AVATAR_STYLES.find(s => s.id === styleId) || AVATAR_STYLES[0];
+    setShowStyleModal(false);
     setIsGeneratingAvatar(true);
+    
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `A cinematic, ultra-high-quality professional studio avatar portrait of a ${selectedPet.breed} ${selectedPet.species} named ${selectedPet.name}. Detailed fur, vibrant lighting, 4K resolution.`;
-      const contents: any = { parts: [{ text: prompt }] };
+      const stylePrompt = style.prompt;
+      const corePrompt = `${stylePrompt} Subject: a ${selectedPet.breed} ${selectedPet.species} named ${selectedPet.name}. Elegant composition, focus on facial features.`;
+      
+      const contents: any = { parts: [{ text: corePrompt }] };
       if (base64Source) {
         contents.parts.push({ inlineData: { data: base64Source.split(',')[1], mimeType: 'image/png' } });
       }
+      
       const response = await ai.models.generateContent({ 
         model: 'gemini-2.5-flash-image', 
         contents, 
@@ -166,11 +181,13 @@ const PetProfilePage: React.FC = () => {
           const updatedPets = pets.map(p => p.id === selectedPet.id ? updatedPet : p);
           await savePetsToStorage(updatedPets);
           setSelectedPet(updatedPet);
+          addNotification('AI Masterpiece', `A new ${style.name} avatar has been created!`, 'success');
           break;
         }
       }
     } catch (err: any) {
-      addNotification('AI Studio Error', 'Avatar generation failed.', 'error');
+      console.error("Avatar error:", err);
+      addNotification('AI Studio Error', 'Avatar generation failed. Please try again.', 'error');
     } finally { setIsGeneratingAvatar(false); }
   };
 
@@ -303,7 +320,7 @@ const PetProfilePage: React.FC = () => {
       ) : selectedPet ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-8">
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-50 shadow-xl text-center space-y-6 relative overflow-hidden group">
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl text-center space-y-6 relative overflow-hidden group">
               <div className="w-52 h-52 rounded-[3.5rem] overflow-hidden mx-auto shadow-2xl relative border-4 border-white transition-all duration-500 hover:scale-[1.02]">
                 {selectedPet.avatarUrl ? (
                   <img src={selectedPet.avatarUrl} className="w-full h-full object-cover" />
@@ -314,20 +331,30 @@ const PetProfilePage: React.FC = () => {
                 )}
                 
                 {isGeneratingAvatar && (
-                  <div className="absolute inset-0 bg-white/40 flex flex-col items-center justify-center backdrop-blur-md">
+                  <div className="absolute inset-0 bg-white/40 flex flex-col items-center justify-center backdrop-blur-md z-20">
                     <Loader2 size={32} className="animate-spin text-theme mb-2" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-theme">Designing...</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-2 justify-center">
-                <button onClick={() => fileInputRef.current?.click()} className="p-3.5 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 shadow-sm text-slate-500 transition-all hover:text-theme" title="Upload Reference Photo">
+              <div className="flex gap-2 justify-center relative z-10">
+                <button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  className="p-3.5 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 shadow-sm text-slate-500 transition-all hover:text-theme" 
+                  title="Upload Reference Photo"
+                >
                   <Camera size={20} />
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => generateAIAvatar(reader.result as string); reader.readAsDataURL(file); } }} />
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => generateAIAvatar(AVATAR_STYLES[0].id, reader.result as string); reader.readAsDataURL(file); } }} />
                 </button>
-                <button onClick={() => generateAIAvatar()} disabled={isGeneratingAvatar} className="p-3.5 rounded-xl shadow-lg transition-all bg-slate-900 text-theme hover:bg-black" title="Generate AI Avatar">
+                <button 
+                  onClick={() => setShowStyleModal(true)} 
+                  disabled={isGeneratingAvatar} 
+                  className="p-3.5 rounded-xl shadow-lg transition-all bg-slate-900 text-theme hover:bg-black flex items-center gap-2" 
+                  title="Open AI Avatar Studio"
+                >
                   <Wand2 size={20} />
+                  {!isGeneratingAvatar && <span className="text-[10px] font-black uppercase tracking-widest pr-1">AI Studio</span>}
                 </button>
               </div>
 
@@ -456,6 +483,51 @@ const PetProfilePage: React.FC = () => {
           <button onClick={() => { setStep(1); setIsAdding(true); }} className="bg-slate-900 text-white px-10 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-2xl shadow-slate-200 active:scale-95">
             Start Registration
           </button>
+        </div>
+      )}
+
+      {/* AI Avatar Style Modal */}
+      {showStyleModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white rounded-[3rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-10 border-b border-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-theme-light text-theme rounded-2xl">
+                  <Palette size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">AI Avatar Studio</h3>
+                  <p className="text-slate-500 font-medium text-sm">Choose an artistic style for {selectedPet?.name}'s new look.</p>
+                </div>
+              </div>
+              <button onClick={() => setShowStyleModal(false)} className="p-3 text-slate-400 hover:bg-slate-50 rounded-2xl transition-all">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              {AVATAR_STYLES.map(style => (
+                <button 
+                  key={style.id}
+                  onClick={() => generateAIAvatar(style.id)}
+                  className="group relative flex flex-col p-6 rounded-3xl border border-slate-100 hover:border-theme hover:bg-theme-light transition-all text-left"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-theme opacity-0 group-hover:opacity-100 transition-opacity">Select Style</span>
+                    <Sparkles size={14} className="text-slate-200 group-hover:text-theme transition-colors" />
+                  </div>
+                  <h4 className="font-black text-slate-900 text-lg mb-1 group-hover:text-theme transition-colors">{style.name}</h4>
+                  <p className="text-slate-500 text-sm font-medium leading-relaxed">{style.description}</p>
+                  
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-theme/5 rounded-full -mr-10 -mt-10 group-hover:scale-110 transition-transform"></div>
+                </button>
+              ))}
+            </div>
+            
+            <div className="p-8 bg-slate-50 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Powered by Gemini Visual Engine</p>
+            </div>
+          </div>
         </div>
       )}
     </div>
