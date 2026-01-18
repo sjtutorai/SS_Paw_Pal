@@ -92,6 +92,7 @@ const PetProfilePage: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     
+    // Simple inline validation
     if (!newPet.name || !newPet.birthday || !newPet.species) {
       addNotification('Validation Error', 'Please fill in all required fields.', 'warning');
       return;
@@ -99,25 +100,18 @@ const PetProfilePage: React.FC = () => {
 
     const id = `SSP-${Date.now()}`;
     const { years, months } = calculateAge(newPet.birthday || '');
-    
     const completePet: PetProfile = { 
+        ...newPet as PetProfile, 
         id, 
         ownerId: user.uid, 
         ownerName: user.displayName || 'Parent', 
-        name: newPet.name || 'Unnamed',
-        species: newPet.species || 'Dog',
-        breed: newPet.breed || 'Mixed Breed',
-        birthday: newPet.birthday || '',
-        bio: newPet.bio || '',
-        temperament: newPet.temperament || '',
         ageYears: String(years), 
         ageMonths: String(months), 
         weightHistory: [], 
         vaccinations: [], 
         isPublic: false,
-        lowercaseName: (newPet.name || '').toLowerCase()
+        lowercaseName: newPet.name?.toLowerCase() || ''
     };
-    
     const updatedPets = [...pets, completePet];
     await savePetsToStorage(updatedPets);
     setSelectedPet(completePet);
@@ -136,6 +130,7 @@ const PetProfilePage: React.FC = () => {
     e.preventDefault();
     if (!selectedPet) return;
 
+    // Inline validation
     if (isAddingRecord === 'weight' && !newRecord.weight) {
       addNotification('Validation Error', 'Weight value is required.', 'warning');
       return;
@@ -216,6 +211,7 @@ const PetProfilePage: React.FC = () => {
     if (!selectedPet) return;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.origin + '/#/pet/' + selectedPet.id)}`;
     
+    // Fetch image as blob to trigger download
     fetch(qrUrl)
       .then(response => response.blob())
       .then(blob => {
