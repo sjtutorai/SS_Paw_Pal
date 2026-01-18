@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPetById, getUserById } from '../services/firebase';
 import { PetProfile, User } from '../types';
-import { Loader2, PawPrint, Dog, User as UserIcon, Calendar, Info, ShieldCheck, AtSign, MessageSquare, Smile } from 'lucide-react';
+import { Loader2, PawPrint, Dog, User as UserIcon, Calendar, Info, ShieldCheck, AtSign, MessageSquare } from 'lucide-react';
 import { AppRoutes } from '../types';
 
 const StatPill: React.FC<{ label: string, value: string | undefined, icon: React.ElementType }> = ({ label, value, icon: Icon }) => (
@@ -93,27 +93,15 @@ const PublicPetProfile: React.FC = () => {
                  <StatPill label="Pet ID" value={pet.id.split('-')[1]} icon={AtSign} />
             </div>
 
-            {/* Personality section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white rounded-[2rem] p-8 border border-slate-100">
-                    <h3 className="font-black text-slate-800 flex items-center gap-3 mb-4">
-                        <Info size={18} className="text-theme"/>
-                        About {pet.name}
-                    </h3>
-                    <p className="text-slate-600 font-medium leading-relaxed italic">
-                        {pet.bio || "This pet's parent hasn't added a bio yet."}
-                    </p>
-                </div>
-                
-                <div className="bg-indigo-50/30 rounded-[2rem] p-8 border border-indigo-100">
-                    <h3 className="font-black text-indigo-900 flex items-center gap-3 mb-4">
-                        <Smile size={18} className="text-indigo-500"/>
-                        Temperament
-                    </h3>
-                    <p className="text-indigo-800/80 font-medium leading-relaxed italic">
-                        {pet.temperament || "No temperament details shared yet."}
-                    </p>
-                </div>
+            {/* Bio section */}
+            <div className="bg-white rounded-[2rem] p-8 border border-slate-100">
+                <h3 className="font-black text-slate-800 flex items-center gap-3 mb-4">
+                    <Info size={18} className="text-theme"/>
+                    About {pet.name}
+                </h3>
+                <p className="text-slate-600 font-medium leading-relaxed italic">
+                    {pet.bio || "This pet's parent hasn't added a bio yet."}
+                </p>
             </div>
         </div>
     );
