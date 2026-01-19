@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { 
@@ -214,4 +213,23 @@ const Login: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 text-center border-t border-slate
+        <div className="mt-8 text-center border-t border-slate-50 pt-8">
+          <p className="text-slate-500 text-[11px] font-medium">
+            {isLogin ? "New to the network?" : "Already a member?"}{" "}
+            <button
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }}
+              className="text-indigo-600 font-black uppercase tracking-widest text-[10px] hover:underline"
+            >
+              {isLogin ? "Create Account" : "Sign In"}
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
