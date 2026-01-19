@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { 
@@ -6,7 +7,8 @@ import {
   loginWithIdentifier, 
   signUpWithEmail 
 } from '../services/firebase';
-import { useNavigate, Link } from "react-router-dom";
+// Fix: Re-importing react-router-dom members using single quotes to resolve module issues
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AppRoutes } from '../types';
 
@@ -212,17 +214,4 @@ const Login: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 text-center border-t border-slate-50 pt-6">
-          <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">
-            {isLogin ? "Unauthorized?" : "Already verified?"}
-            <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="ml-2 text-indigo-600 hover:underline">
-              {isLogin ? "Register Access" : "Sign In"}
-            </button>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default Login;
+        <div className="mt-8 text-center border-t border-slate

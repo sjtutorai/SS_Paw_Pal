@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   ShieldCheck, 
@@ -19,7 +20,8 @@ import {
   Save
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from "react-router-dom";
+// Fix: Re-importing react-router-dom members using single quotes to resolve module issues
+import { Link } from 'react-router-dom';
 import { AppRoutes, PetProfile } from '../types';
 import { STAT_ROUTINE } from '../context/NotificationContext';
 

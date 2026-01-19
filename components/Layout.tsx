@@ -1,10 +1,12 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, Bell, User as UserIcon, Trash2, CheckCircle2, AlertTriangle, Info, Search, Loader2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 // Fix: Import AppNotification from types instead of NotificationContext since it is not exported from there
 import { useNotifications } from '../context/NotificationContext';
-import { Link, useLocation } from "react-router-dom";
+// Fix: Re-importing react-router-dom members using single quotes to resolve module issues
+import { Link, useLocation } from 'react-router-dom';
 import { AppRoutes, AppNotification } from '../types';
 
 const NotificationItem: React.FC<{ notif: AppNotification; onMarkRead: (id: string) => void }> = ({ notif, onMarkRead }) => {

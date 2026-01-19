@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { GoogleGenAI } from "@google/genai";
-import { syncPetToDb, getPetById } from '../services/firebase';
+import { syncPetToDb, getPetById, deletePet } from '../services/firebase';
 import jsQR from 'jsqr';
 import { 
   Dog, Plus, PawPrint, Camera, CheckCircle2, Bird, Fish, Thermometer,  
-  Trash2, Stethoscope, Brain, Wand2, Scan, X, Syringe, TrendingUp, Loader2, QrCode, ArrowRight, Palette, Sparkles
+  Trash2, Stethoscope, Brain, Wand2, Scan, X, Syringe, TrendingUp, Loader2, QrCode, ArrowRight, Palette, Sparkles, Download, AlertTriangle, Bot, Heart
 } from 'lucide-react';
 import { PetProfile, WeightRecord, VaccinationRecord, AppRoutes } from '../types';
 
@@ -63,6 +63,12 @@ const PetProfilePage: React.FC = () => {
   const [newPet, setNewPet] = useState<Partial<PetProfile>>({ name: '', breed: '', birthday: '', bio: '', species: 'Dog', weightHistory: [], vaccinations: [] });
   const [newRecord, setNewRecord] = useState({ name: '', date: new Date().toISOString().split('T')[0], weight: '', nextDueDate: '' });
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Delete Pet states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -107,14 +113,44 @@ const PetProfilePage: React.FC = () => {
     setSelectedPet(completePet);
     setSaveSuccess(true);
     
-    // Success UX and Redirect to Dashboard
     setTimeout(() => { 
       setIsAdding(false); 
       setSaveSuccess(false); 
       setStep(1);
       addNotification('Success', `${completePet.name} is now registered!`, 'success');
-      navigate(AppRoutes.HOME); // Redirect to dashboard page
+      navigate(AppRoutes.HOME); 
     }, 1800);
+  };
+
+  const handleDeletePet = async () => {
+    if (!selectedPet || !user) return;
+    if (deleteConfirmation !== selectedPet.name) {
+      addNotification('Validation Error', 'The typed name does not match the pet profile name.', 'warning');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deletePet(selectedPet.id);
+      const updatedPets = pets.filter(p => p.id !== selectedPet.id);
+      localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(updatedPets));
+      setPets(updatedPets);
+      
+      if (updatedPets.length > 0) {
+        setSelectedPet(updatedPets[0]);
+      } else {
+        setSelectedPet(null);
+      }
+      
+      addNotification('Deleted', `${selectedPet.name}'s profile has been removed.`, 'info');
+      setShowDeleteModal(false);
+      setDeleteConfirmation('');
+    } catch (err) {
+      console.error("Deletion failed:", err);
+      addNotification('Error', 'Failed to delete profile.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleAddRecord = async (e: React.FormEvent) => {
@@ -361,10 +397,15 @@ const PetProfilePage: React.FC = () => {
               <div className="space-y-1 pb-4">
                 <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{selectedPet.name}</h3>
                 <p className="text-[10px] font-black text-theme uppercase tracking-[0.2em]">{selectedPet.breed} · {selectedPet.species}</p>
+                <button 
+                  onClick={() => { setShowDeleteModal(true); setDeleteConfirmation(''); }}
+                  className="mt-6 flex items-center gap-2 mx-auto text-rose-400 hover:text-rose-600 font-bold text-[10px] uppercase tracking-widest transition-colors"
+                >
+                  <Trash2 size={14} /> Remove Profile
+                </button>
               </div>
             </div>
 
-            {/* Per-Pet Digital ID / Scanner Section */}
             <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden">
                <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
                
@@ -467,7 +508,7 @@ const PetProfilePage: React.FC = () => {
                  )}
                </div>
              ) : (
-               <div className="flex flex-col items-center justify-center py-24 text-center">
+               <div className="flex-1 flex flex-col items-center justify-center py-24 text-center">
                   <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 text-slate-200"><Stethoscope size={32} /></div>
                   <p className="text-slate-300 font-black uppercase tracking-[0.3em] text-[10px]">No medical logs recorded</p>
                   <button onClick={() => setIsAddingRecord('vaccine')} className="mt-6 text-theme font-black text-[10px] uppercase tracking-widest hover:underline">+ Add First Record</button>
@@ -526,6 +567,58 @@ const PetProfilePage: React.FC = () => {
             
             <div className="p-8 bg-slate-50 text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Powered by Gemini Visual Engine</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedPet && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-8 bg-rose-50 border-b border-rose-100 flex items-center gap-4">
+              <div className="p-3 bg-white rounded-2xl text-rose-500 shadow-sm">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-rose-900 tracking-tight">Delete Profile?</h3>
+                <p className="text-rose-700/80 font-medium text-xs">This action is permanent.</p>
+              </div>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <p className="text-slate-600 font-medium text-sm leading-relaxed">
+                To confirm deletion of <strong>{selectedPet.name}</strong>, please type their name exactly as shown below.
+              </p>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmation Name</label>
+                <input 
+                  autoFocus
+                  type="text" 
+                  placeholder={`Type "${selectedPet.name}" to delete`} 
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-rose-500/20 border border-slate-100 font-bold text-slate-800"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => { setShowDeleteModal(false); setDeleteConfirmation(''); }}
+                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDeletePet}
+                  disabled={deleteConfirmation !== selectedPet.name || isDeleting}
+                  className="flex-1 py-4 bg-rose-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                  Delete Profile
+                </button>
+              </div>
             </div>
           </div>
         </div>

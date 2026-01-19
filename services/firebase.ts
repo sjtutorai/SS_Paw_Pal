@@ -98,6 +98,11 @@ export const getPetById = async (id: string) => {
   const snap = await getDoc(petRef);
   return snap.exists() ? { id: snap.id, ...snap.data() } as PetProfile : null;
 };
+export const deletePet = async (petId: string) => {
+  if (!petId) return;
+  const petRef = doc(db, "pets", petId);
+  await deleteDoc(petRef);
+};
 export const getUserById = async (id: string) => {
   if (!id) return null;
   const userRef = doc(db, "users", id);

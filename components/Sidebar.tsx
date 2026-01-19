@@ -1,5 +1,7 @@
+
 import React from 'react';
-import { Link, useLocation, useNavigate } from "react-router-dom";
+// Fix: Re-importing react-router-dom members using single quotes to resolve module issues
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   PlusSquare, 
   Dog, 

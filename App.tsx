@@ -1,5 +1,7 @@
+
 import React, { useEffect, lazy, Suspense } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+// Fix: Re-importing react-router-dom members using single quotes and explicitly using BrowserRouter
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import { AppRoutes } from './types';
 import { AuthProvider, useAuth } from './context/AuthContext';
