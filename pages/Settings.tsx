@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
@@ -11,12 +12,14 @@ import {
   Phone, 
   Palette,
   Plus,
-  Check
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { db, updateUserProfile, isUsernameTaken } from '../services/firebase';
 import { doc, getDoc } from "firebase/firestore";
+import { countryCodes } from '../utils/countryCodes';
 
 const THEME_PRESETS = [
   { name: 'Indigo', color: '#4f46e5' },
@@ -28,6 +31,28 @@ const THEME_PRESETS = [
   { name: 'Sunset', color: '#f97316' },
 ];
 
+const parsePhoneNumber = (fullNumber: string) => {
+  if (!fullNumber) return { phoneCode: '+91', phoneNumber: '' };
+
+  const sortedCodes = [...countryCodes].sort((a, b) => b.code.length - a.code.length);
+  
+  for (const country of sortedCodes) {
+    if (fullNumber.startsWith(country.code)) {
+      const numberPart = fullNumber.substring(country.code.length).trim();
+      return { phoneCode: country.code, phoneNumber: numberPart };
+    }
+  }
+
+  // Fallback for numbers without a clear country code
+  const parts = fullNumber.split(' ');
+  if (parts.length > 1 && parts[0].startsWith('+')) {
+    return { phoneCode: parts[0], phoneNumber: parts.slice(1).join(' ') };
+  }
+  
+  return { phoneCode: '+91', phoneNumber: fullNumber };
+};
+
+
 const Settings: React.FC = () => {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -38,13 +63,13 @@ const Settings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('ssp_theme_color') || '#4f46e5');
   
-  // Username Validation States
   const [isValidatingUsername, setIsValidatingUsername] = useState(false);
   const [usernameTakenStatus, setUsernameTakenStatus] = useState<'available' | 'taken' | 'none'>('none');
 
   const [editData, setEditData] = useState({
     displayName: user?.displayName || '',
     username: '',
+    phoneCode: '+91',
     phoneNumber: ''
   });
 
@@ -56,11 +81,13 @@ const Settings: React.FC = () => {
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const data = docSnap.data();
+            const { phoneCode, phoneNumber } = parsePhoneNumber(data.phoneNumber);
             setDbUser(data);
             setEditData({
               displayName: data.displayName || user.displayName || '',
               username: data.username || '',
-              phoneNumber: data.phoneNumber || ''
+              phoneCode,
+              phoneNumber
             });
           }
         } catch (e) {
@@ -71,7 +98,6 @@ const Settings: React.FC = () => {
     fetchUserData();
   }, [user]);
 
-  // Debounced Username Validation
   useEffect(() => {
     if (!isEditing || !editData.username || editData.username === dbUser?.username) {
       setIsValidatingUsername(false);
@@ -98,8 +124,6 @@ const Settings: React.FC = () => {
     setCurrentTheme(color);
     const root = document.documentElement;
     root.style.setProperty('--theme-color', color);
-    root.style.setProperty('--theme-color-hover', color + 'dd'); 
-    root.style.setProperty('--theme-color-light', color + '15');
     localStorage.setItem('ssp_theme_color', color);
     addNotification('Primary Color Updated', 'Branding preferences updated.', 'success');
   };
@@ -111,19 +135,24 @@ const Settings: React.FC = () => {
     setSaveStatus(null);
     
     try {
+      const fullPhoneNumber = editData.phoneNumber.trim() ? `${editData.phoneCode} ${editData.phoneNumber.trim()}` : '';
+
       await updateUserProfile(user.uid, {
         displayName: editData.displayName,
         username: editData.username,
-        phoneNumber: editData.phoneNumber
+        phoneNumber: fullPhoneNumber
       });
       
+      const { phoneCode, phoneNumber } = parsePhoneNumber(fullPhoneNumber);
+
       setDbUser((prev: any) => ({ 
         ...prev, 
         displayName: editData.displayName,
         username: editData.username.toLowerCase(),
-        phoneNumber: editData.phoneNumber
+        phoneNumber: fullPhoneNumber
       }));
       
+      setEditData(prev => ({ ...prev, phoneCode, phoneNumber }));
       setSaveStatus({ message: 'Profile updated successfully!', type: 'success' });
       setIsEditing(false);
       setUsernameTakenStatus('none');
@@ -144,7 +173,6 @@ const Settings: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto pb-32 space-y-12 animate-fade-in">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
         <div className="space-y-2">
           <div className="inline-flex px-4 py-1.5 bg-theme-light text-theme rounded-full text-xs font-black uppercase tracking-widest mb-2 transition-theme">Account Hub</div>
@@ -161,11 +189,9 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="space-y-10">
-        {/* Profile Card */}
         <div className="bg-white rounded-[4rem] p-10 md:p-20 border border-slate-50 shadow-2xl space-y-16 relative overflow-hidden transition-all duration-700">
           <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start gap-16 lg:gap-24">
             
-            {/* Avatar Area */}
             <div className="relative group shrink-0">
               <div className="w-56 h-56 rounded-[3.5rem] bg-theme-light flex flex-col items-center justify-center overflow-hidden border-4 border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 group-hover:scale-105">
                 {user?.photoURL ? (
@@ -192,14 +218,13 @@ const Settings: React.FC = () => {
               )}
             </div>
 
-            {/* Fields Area */}
             <div className="flex-1 w-full max-w-xl space-y-12">
               <div className="space-y-10">
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Full Name</label>
                   <input 
                     readOnly={!isEditing}
-                    value={isEditing ? editData.displayName : (dbUser?.displayName || user?.displayName || '')}
+                    value={editData.displayName}
                     onChange={(e) => setEditData({...editData, displayName: e.target.value})}
                     placeholder="e.g. Sadanand Jyoti"
                     className={`w-full p-6 rounded-[1.5rem] text-lg font-bold text-slate-800 outline-none transition-all ${
@@ -216,7 +241,7 @@ const Settings: React.FC = () => {
                     </div>
                     <input 
                       readOnly={!isEditing}
-                      value={isEditing ? editData.username : (dbUser?.username || '')}
+                      value={editData.username}
                       onChange={(e) => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})}
                       placeholder="username"
                       className={`w-full p-6 pl-14 pr-14 rounded-[1.5rem] text-lg font-bold text-slate-800 outline-none transition-all ${
@@ -249,21 +274,30 @@ const Settings: React.FC = () => {
                     </div>
                   )}
                 </div>
-
+                
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Phone Number</label>
-                  <div className="relative">
-                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400">
-                      <Phone size={20} />
+                  <div className={`relative flex items-center w-full rounded-[1.5rem] transition-all ${
+                    isEditing ? 'bg-slate-50 border border-slate-200 focus-within:bg-white focus-within:ring-4 ring-theme/10' : 'bg-slate-50/50 border-transparent'
+                  }`}>
+                    <div className="relative flex items-center">
+                      <select
+                        disabled={!isEditing}
+                        value={editData.phoneCode}
+                        onChange={(e) => setEditData({ ...editData, phoneCode: e.target.value })}
+                        className={`pl-6 pr-10 py-6 appearance-none bg-transparent font-bold text-lg text-slate-800 outline-none ${isEditing ? 'cursor-pointer' : 'cursor-default'}`}
+                      >
+                        {countryCodes.map(c => <option key={c.name} value={c.code}>{c.code}</option>)}
+                      </select>
+                      <ChevronDown size={16} className={`absolute right-3 text-slate-400 transition-pointer-events ${isEditing ? 'pointer-events-auto' : 'pointer-events-none'}`} />
                     </div>
+                    <div className="w-px h-8 bg-slate-200 self-center"></div>
                     <input 
                       readOnly={!isEditing}
-                      value={isEditing ? editData.phoneNumber : (dbUser?.phoneNumber || '')}
-                      onChange={(e) => setEditData({...editData, phoneNumber: e.target.value})}
-                      placeholder="e.g. +91 9876543210"
-                      className={`w-full p-6 pl-14 rounded-[1.5rem] text-lg font-bold text-slate-800 outline-none transition-all ${
-                        isEditing ? 'bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 ring-theme/10' : 'bg-slate-50/50 border-transparent cursor-default'
-                      }`}
+                      value={editData.phoneNumber}
+                      onChange={(e) => setEditData({...editData, phoneNumber: e.target.value.replace(/[^0-9\s-]/g, '')})}
+                      placeholder="Phone Number"
+                      className={`w-full p-6 bg-transparent text-lg font-bold text-slate-800 outline-none ${isEditing ? '' : 'cursor-default'}`}
                     />
                   </div>
                 </div>
@@ -283,10 +317,12 @@ const Settings: React.FC = () => {
                     onClick={() => {
                       setIsEditing(false);
                       setUsernameTakenStatus('none');
+                      const { phoneCode, phoneNumber } = parsePhoneNumber(dbUser?.phoneNumber || '');
                       setEditData({
                         displayName: dbUser?.displayName || user?.displayName || '',
                         username: dbUser?.username || '',
-                        phoneNumber: dbUser?.phoneNumber || ''
+                        phoneCode,
+                        phoneNumber,
                       });
                     }}
                     disabled={isSaving}
@@ -300,7 +336,6 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        {/* Theme Picker - Primary Color Only */}
         <div className="bg-white rounded-[3.5rem] p-10 md:p-14 border border-slate-100 shadow-sm space-y-12">
           <div className="flex items-center gap-5">
             <div className="p-4 bg-theme-light text-theme rounded-[2rem] transition-theme shadow-sm">
