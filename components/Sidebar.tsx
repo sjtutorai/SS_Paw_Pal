@@ -1,4 +1,3 @@
-
 import React from 'react';
 // Fix: Re-importing react-router-dom members using single quotes to resolve module issues
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -96,14 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
             <div className="w-12 h-12 bg-white border border-slate-100 rounded-2xl p-2.5 flex items-center justify-center shrink-0 shadow-lg group-hover:rotate-6 transition-all duration-500">
               <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
             </div>
-            {!isCollapsed && (
-              <div className="flex flex-col animate-in fade-in slide-in-from-left-4 duration-500">
-                <span className="font-black text-slate-900 tracking-tighter text-xl whitespace-nowrap">
-                  SS Paw Pal
-                </span>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] -mt-1">System Interface</span>
-              </div>
-            )}
+            {/* BRAND NAME REMOVED TO FOCUS ON PAGE TITLES IN HEADER */}
           </Link>
           <button 
             onClick={() => setIsOpen(false)} 
