@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Mail, 
@@ -32,7 +33,7 @@ const Contact: React.FC = () => {
     setIsSending(true);
 
     // Build the mailto link
-    const mailtoLink = `mailto:support@sspawpal.com?subject=${encodeURIComponent(formData.subject || 'Inquiry from SS Paw Pal User')}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`)}`;
+    const mailtoLink = `mailto:sspawpal@gmail.com?subject=${encodeURIComponent(formData.subject || 'Inquiry from SS Paw Pal User')}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`)}`;
 
     // Simulate sending delay for UI feedback
     setTimeout(() => {
@@ -76,7 +77,7 @@ const Contact: React.FC = () => {
                 <div className="p-3 bg-white/10 rounded-2xl text-indigo-300"><Mail size={20} /></div>
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Email Terminal</p>
-                  <p className="font-bold text-sm">support@sspawpal.com</p>
+                  <p className="font-bold text-sm">sspawpal@gmail.com</p>
                 </div>
               </div>
 
@@ -84,7 +85,7 @@ const Contact: React.FC = () => {
                 <div className="p-3 bg-white/10 rounded-2xl text-indigo-300"><Phone size={20} /></div>
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Crisis Hotline</p>
-                  <p className="font-bold text-sm">+1 (888) PAW-PAL-0</p>
+                  <p className="font-bold text-sm">+91 8105423488</p>
                 </div>
               </div>
 
@@ -92,7 +93,7 @@ const Contact: React.FC = () => {
                 <div className="p-3 bg-white/10 rounded-2xl text-indigo-300"><Zap size={20} /></div>
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Response Time</p>
-                  <p className="font-bold text-sm">&lt; 24h Synchronized</p>
+                  <p className="font-bold text-sm">24/7 Available</p>
                 </div>
               </div>
             </div>
