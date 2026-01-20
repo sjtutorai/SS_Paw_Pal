@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   ShieldCheck, 
@@ -19,7 +18,9 @@ import {
   X,
   Save,
   Zap,
-  Loader2
+  Loader2,
+  LayoutDashboard,
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
@@ -78,7 +79,6 @@ const Home: React.FC = () => {
 
     const loadData = async () => {
       setIsLoading(true);
-      // Try local cache first
       const saved = localStorage.getItem(`ssp_pets_${user?.uid}`);
       if (saved) {
         try {
@@ -88,13 +88,11 @@ const Home: React.FC = () => {
         } catch (e) {}
       }
 
-      // Sync with cloud registry
       try {
         const remotePets = await getPetsByOwnerId(user.uid);
         if (remotePets.length > 0) {
           setPets(remotePets);
           localStorage.setItem(`ssp_pets_${user.uid}`, JSON.stringify(remotePets));
-          // Update active pet if nothing is set
           if (!activePet) setActivePet(remotePets[0]);
         }
       } catch (err) {
@@ -178,6 +176,7 @@ const Home: React.FC = () => {
 
   return (
     <div className="space-y-12 pb-20 animate-fade-in">
+      {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full">
@@ -233,37 +232,150 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <StatCard 
-          icon={Heart} 
-          label="Recent Weight" 
-          value={recentWeight ? `${recentWeight} kg` : '--'} 
-          color="bg-rose-500" 
-          onEdit={() => { setEditingStat('weight'); setEditValue(recentWeight ? String(recentWeight) : ''); }}
-        />
-        <StatCard 
-          icon={Calendar} 
-          label="Appointments" 
-          value={appointments} 
-          color="bg-indigo-600" 
-          onEdit={() => { setEditingStat('appointments'); setEditValue(appointments === 'None' ? '' : appointments); }} 
-        />
-        <StatCard 
-          icon={Activity} 
-          label="Exercise Today" 
-          value={`${exercise} min`} 
-          color="bg-emerald-500" 
-          onEdit={() => { setEditingStat('exercise'); setEditValue(exercise); }} 
-        />
-        <StatCard 
-          icon={ShieldCheck} 
-          label="Pet Status" 
-          value={petStatus} 
-          color="bg-amber-500" 
-          onEdit={() => { setEditingStat('status'); setEditValue(petStatus); }}
-        />
-      </div>
+      {hasPets ? (
+        <>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <StatCard 
+              icon={Heart} 
+              label="Recent Weight" 
+              value={recentWeight ? `${recentWeight} kg` : '--'} 
+              color="bg-rose-500" 
+              onEdit={() => { setEditingStat('weight'); setEditValue(recentWeight ? String(recentWeight) : ''); }}
+            />
+            <StatCard 
+              icon={Calendar} 
+              label="Appointments" 
+              value={appointments} 
+              color="bg-indigo-600" 
+              onEdit={() => { setEditingStat('appointments'); setEditValue(appointments === 'None' ? '' : appointments); }} 
+            />
+            <StatCard 
+              icon={Activity} 
+              label="Exercise Today" 
+              value={`${exercise} min`} 
+              color="bg-emerald-500" 
+              onEdit={() => { setEditingStat('exercise'); setEditValue(exercise); }} 
+            />
+            <StatCard 
+              icon={ShieldCheck} 
+              label="Pet Status" 
+              value={petStatus} 
+              color="bg-amber-500" 
+              onEdit={() => { setEditingStat('status'); setEditValue(petStatus); }}
+            />
+          </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-2 bg-white rounded-[3.5rem] shadow-[0_8px_40px_rgba(0,0,0,0.03)] border border-slate-50 p-10 hover:shadow-xl transition-all duration-700">
+              <div className="flex items-center justify-between mb-10">
+                <h4 className="font-black text-2xl text-slate-900 flex items-center gap-4">
+                  <div className="p-3 bg-theme-light rounded-2xl"><Activity size={20} className="text-theme" /></div>
+                  Guardian Analytics
+                </h4>
+                <Link to={AppRoutes.PET_PROFILE} className="text-[10px] font-black text-theme uppercase tracking-widest hover:underline">Full Registry</Link>
+              </div>
+              
+              <div className="h-80 bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center group cursor-pointer hover:bg-white hover:border-theme/20 transition-all duration-500">
+                <div className="w-20 h-20 bg-white rounded-3xl shadow-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Plus size={32} className="text-slate-200 group-hover:text-theme" />
+                </div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Log Daily Observations</p>
+              </div>
+            </div>
+
+            {/* Routine Section */}
+            <div className={`rounded-[3.5rem] p-10 flex flex-col transition-all duration-1000 shadow-2xl ${isDayComplete ? 'bg-emerald-600 text-white shadow-emerald-500/20' : 'bg-white border border-slate-50 shadow-slate-200/50'}`}>
+              <div className="flex items-center justify-between mb-10">
+                <h4 className={`font-black text-2xl tracking-tight ${isDayComplete ? 'text-white' : 'text-slate-900'}`}>Routine</h4>
+                <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${isDayComplete ? 'bg-white/20' : 'bg-slate-50 text-slate-400'}`}>
+                  {isDayComplete ? 'Optimized' : 'Live Check'}
+                </div>
+              </div>
+              
+              {isDayComplete ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 animate-in zoom-in duration-700">
+                  <div className="w-28 h-28 bg-white/10 rounded-[3rem] flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl">
+                    <Trophy size={56} className="text-white" />
+                  </div>
+                  <div>
+                    <h5 className="text-3xl font-black mb-3 tracking-tight">Full Sync Complete</h5>
+                    <p className="text-emerald-50/70 font-medium leading-relaxed">
+                      All care protocols for {activePet?.name} have been executed.
+                    </p>
+                  </div>
+                  <div className="w-full bg-black/10 rounded-3xl p-6 text-center">
+                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Next Phase</span>
+                    <p className="font-bold text-sm mt-1">Tomorrow 07:00 AM</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {STAT_ROUTINE.map((item) => {
+                    const status = getTaskStatus(item);
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={`flex items-center gap-4 p-5 rounded-[1.5rem] border transition-all duration-500 ${
+                          status === 'active' 
+                          ? 'bg-slate-900 border-slate-900 text-white shadow-xl scale-[1.03]' 
+                          : status === 'done'
+                          ? 'bg-slate-50 border-transparent opacity-40'
+                          : 'bg-white border-slate-50'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                          status === 'active' ? 'bg-theme text-white' : 
+                          status === 'done' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-50 text-slate-300'
+                        }`}>
+                          {status === 'done' ? <CheckCircle2 size={18} /> : 
+                          status === 'active' ? <Zap size={18} className="animate-pulse" /> : <Clock size={18} />}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-black text-xs truncate uppercase tracking-widest ${status === 'done' ? 'line-through opacity-50' : ''}`}>
+                            {item.task}
+                          </p>
+                          <p className={`text-[8px] font-bold uppercase tracking-widest mt-1 opacity-60`}>
+                            {item.timeLabel}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Empty State Placeholder */
+        <div className="bg-white rounded-[4rem] p-12 md:p-20 text-center border border-slate-100 shadow-sm animate-in zoom-in-95 duration-700">
+          <div className="w-32 h-32 bg-slate-50 rounded-[3rem] flex items-center justify-center mx-auto mb-10 shadow-inner group">
+            <Dog size={64} className="text-slate-200 group-hover:scale-110 transition-transform duration-500" />
+          </div>
+          <h3 className="text-4xl font-black text-slate-900 mb-6 tracking-tighter">No Companions Registered</h3>
+          <p className="text-slate-500 font-medium mb-12 max-w-lg mx-auto text-lg leading-relaxed">
+            Your guardian dashboard will activate once you've registered a pet. Track health, manage routines, and get AI insights for your companions.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link 
+              to={AppRoutes.PET_PROFILE} 
+              className="flex items-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-2xl shadow-slate-200 active:scale-95 group"
+            >
+              <Plus size={20} /> Register Your First Pet
+            </Link>
+            <Link 
+              to={AppRoutes.AI_ASSISTANT} 
+              className="flex items-center gap-3 bg-white border border-slate-100 px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+            >
+              <Sparkles size={18} className="text-theme" /> Consult AI Specialist
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Editing Modal */}
       {editingStat && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in">
            <div className="bg-white rounded-[3rem] p-10 max-w-md w-full shadow-2xl border border-slate-100 space-y-8 animate-in zoom-in-95 duration-300">
@@ -317,87 +429,6 @@ const Home: React.FC = () => {
            </div>
         </div>
       )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 bg-white rounded-[3.5rem] shadow-[0_8px_40px_rgba(0,0,0,0.03)] border border-slate-50 p-10 hover:shadow-xl transition-all duration-700">
-          <div className="flex items-center justify-between mb-10">
-            <h4 className="font-black text-2xl text-slate-900 flex items-center gap-4">
-              <div className="p-3 bg-theme-light rounded-2xl"><Activity size={20} className="text-theme" /></div>
-              Guardian Analytics
-            </h4>
-            <Link to={AppRoutes.PET_PROFILE} className="text-[10px] font-black text-theme uppercase tracking-widest hover:underline">Full Registry</Link>
-          </div>
-          
-          <div className="h-80 bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center group cursor-pointer hover:bg-white hover:border-theme/20 transition-all duration-500">
-             <div className="w-20 h-20 bg-white rounded-3xl shadow-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Plus size={32} className="text-slate-200 group-hover:text-theme" />
-             </div>
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Log Daily Observations</p>
-          </div>
-        </div>
-
-        <div className={`rounded-[3.5rem] p-10 flex flex-col transition-all duration-1000 shadow-2xl ${isDayComplete ? 'bg-emerald-600 text-white shadow-emerald-500/20' : 'bg-white border border-slate-50 shadow-slate-200/50'}`}>
-          <div className="flex items-center justify-between mb-10">
-            <h4 className={`font-black text-2xl tracking-tight ${isDayComplete ? 'text-white' : 'text-slate-900'}`}>Routine</h4>
-            <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${isDayComplete ? 'bg-white/20' : 'bg-slate-50 text-slate-400'}`}>
-              {isDayComplete ? 'Optimized' : 'Live Check'}
-            </div>
-          </div>
-          
-          {isDayComplete ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 animate-in zoom-in duration-700">
-              <div className="w-28 h-28 bg-white/10 rounded-[3rem] flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl">
-                <Trophy size={56} className="text-white" />
-              </div>
-              <div>
-                <h5 className="text-3xl font-black mb-3 tracking-tight">Full Sync Complete</h5>
-                <p className="text-emerald-50/70 font-medium leading-relaxed">
-                  All care protocols for {activePet?.name} have been executed.
-                </p>
-              </div>
-              <div className="w-full bg-black/10 rounded-3xl p-6 text-center">
-                <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Next Phase</span>
-                <p className="font-bold text-sm mt-1">Tomorrow 07:00 AM</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              {STAT_ROUTINE.map((item) => {
-                const status = getTaskStatus(item);
-                return (
-                  <div 
-                    key={item.id} 
-                    className={`flex items-center gap-4 p-5 rounded-[1.5rem] border transition-all duration-500 ${
-                      status === 'active' 
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-xl scale-[1.03]' 
-                      : status === 'done'
-                      ? 'bg-slate-50 border-transparent opacity-40'
-                      : 'bg-white border-slate-50'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                      status === 'active' ? 'bg-theme text-white' : 
-                      status === 'done' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-50 text-slate-300'
-                    }`}>
-                      {status === 'done' ? <CheckCircle2 size={18} /> : 
-                       status === 'active' ? <Zap size={18} className="animate-pulse" /> : <Clock size={18} />}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-black text-xs truncate uppercase tracking-widest ${status === 'done' ? 'line-through opacity-50' : ''}`}>
-                        {item.task}
-                      </p>
-                      <p className={`text-[8px] font-bold uppercase tracking-widest mt-1 opacity-60`}>
-                        {item.timeLabel}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
