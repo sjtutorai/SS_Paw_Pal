@@ -11,7 +11,8 @@ import {
   Trash2, Stethoscope, Brain, Wand2, Scan, X, Syringe, TrendingUp, Loader2, QrCode, ArrowRight, Palette, Sparkles, AlertTriangle, Bot, Heart, Bug, Waves,
   Star, 
   Layers,
-  Sparkle
+  Sparkle,
+  Zap
 } from 'lucide-react';
 import { PetProfile, WeightRecord, VaccinationRecord, AppRoutes } from '../types';
 
@@ -60,19 +61,19 @@ export const PET_CATEGORIES = [
 
 const AVATAR_STYLES = [
   { 
-    id: 'elite-studio', 
-    name: 'Elite Digital Studio', 
-    description: 'Modern, premium polished aesthetic', 
+    id: 'premium-elite', 
+    name: 'Elite Portrait Studio', 
+    description: 'Ultra-polished digital kawaii aesthetic', 
     isPremium: true,
-    prompt: `A high-quality digital pet avatar optimized for a mobile app profile picture. 
-    Art Direction: Cute, friendly, and modern cartoon aesthetic; soft pastel color palette with smooth gradient lighting and subtle glow highlights; big expressive eyes and a rounded face; clean, smooth vector-style lines; soft shadows for depth; subtle rim lighting. 
-    Composition: Front-facing, centered, and clearly visible; framed inside a clean circular border; simple light or pastel gradient background; minimal details so it looks professional and app-friendly. 
-    Mood: Warm, welcoming, and playful but polished; clean startup-style digital polish.`
+    prompt: `Generate a high-quality digital pet avatar optimized for a mobile application profile picture. 
+    Art Direction: Modern, premium, and polished cartoon style; soft pastel color palette with smooth gradient lighting and subtle glow highlights; slightly glossy, big expressive eyes; rounded, chubby facial structure for maximum cuteness; clean, crisp vector-style outlines; soft natural shading with gentle shadows for depth; subtle rim lighting. 
+    Composition: Perfectly front-facing and symmetrically centered; framed inside a clean circular border; minimalist light or pastel gradient background with a slight depth blur. 
+    Mood: Warm, welcoming, and playful but polished; friendly and approachable expression with a soft gentle smile; clean startup-style digital polish.`
   },
-  { id: 'realistic', name: 'Studio Portrait', description: 'Detailed fur & 4K textures', prompt: 'A cinematic, ultra-high-quality professional studio avatar portrait. Detailed fur, vibrant lighting, 4K resolution, macro photography style.' },
-  { id: 'pixar', name: '3D Animation', description: 'Pixar-inspired character', prompt: 'A cute, 3D animated style character portrait. Pixar/Disney style, expressive eyes, vibrant colors, clean lines, high-end CGI.' },
-  { id: 'watercolor', name: 'Artisan Watercolor', description: 'Dreamy & soft brushstrokes', prompt: 'A beautiful, delicate watercolor painting. Soft brushstrokes, artistic splatters, dreamy atmosphere, elegant paper texture background.' },
-  { id: 'cyber', name: 'Neon Future', description: 'Futuristic synthwave vibes', prompt: 'A futuristic cyberpunk themed portrait. Neon lights, synthwave aesthetic, dark city background, high-tech glow.' },
+  { id: 'realistic-studio', name: 'Studio Realism', description: 'Hyper-detailed cinematic lighting', prompt: 'A cinematic, ultra-high-quality professional studio avatar portrait. Detailed fur, vibrant lighting, 4K resolution, macro photography style.' },
+  { id: 'pixar-3d', name: '3D Animator', description: 'Pixar-inspired 3D character', prompt: 'A cute, 3D animated style character portrait. Pixar/Disney style, expressive eyes, vibrant colors, clean lines, high-end CGI.' },
+  { id: 'watercolor-dream', name: 'Watercolor Dream', description: 'Dreamy & soft brushstrokes', prompt: 'A beautiful, delicate watercolor painting. Soft brushstrokes, artistic splatters, dreamy atmosphere, elegant paper texture background.' },
+  { id: 'synth-future', name: 'Cyber Wave', description: 'Neon lights & futuristic tech', prompt: 'A futuristic cyberpunk themed portrait. Neon lights, synthwave aesthetic, dark city background, high-tech glow.' },
 ];
 
 const calculateAge = (birthday: string) => {
@@ -192,7 +193,7 @@ const PetProfilePage: React.FC = () => {
       }
       
       navigate(AppRoutes.PET_PROFILE);
-      addNotification('Identity Purged', `${petNameToNotify}'s profile has been removed.`, 'info');
+      addNotification('Registry Purged', `${petNameToNotify}'s profile has been removed.`, 'info');
     } catch (err) {
       console.error("Deletion failed:", err);
       addNotification('Error', 'Failed to delete profile.', 'error');
@@ -245,7 +246,7 @@ const PetProfilePage: React.FC = () => {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const stylePrompt = style.prompt;
-      const corePrompt = `${stylePrompt} Subject: a ${selectedPet.breed} ${selectedPet.species} named ${selectedPet.name}. The character should have a friendly expression with a soft gentle smile. Clean digital polish.`;
+      const corePrompt = `${stylePrompt} Subject: a ${selectedPet.breed} ${selectedPet.species} named ${selectedPet.name}. High resolution, 1:1 aspect ratio.`;
       
       const contents: any = { parts: [{ text: corePrompt }] };
       if (base64Source) {
@@ -265,13 +266,13 @@ const PetProfilePage: React.FC = () => {
           const updatedPets = pets.map(p => p.id === selectedPet.id ? updatedPet : p);
           await savePetsToStorage(updatedPets);
           setSelectedPet(updatedPet);
-          addNotification('AI Masterpiece', `A new ${style.name} avatar has been created!`, 'success');
+          addNotification('AI Artwork Complete', `${selectedPet.name}'s ${style.name} avatar is ready!`, 'success');
           break;
         }
       }
     } catch (err: any) {
-      console.error("Avatar error:", err);
-      addNotification('AI Studio Error', 'Avatar generation failed. Please try again.', 'error');
+      console.error("Avatar generation error:", err);
+      addNotification('AI Studio Error', 'Generation cycle failed. Please try again.', 'error');
     } finally { setIsGeneratingAvatar(false); }
   };
 
@@ -305,7 +306,7 @@ const PetProfilePage: React.FC = () => {
           try {
             const petData = await getPetById(petId);
             if (petData) {
-              addNotification('ID Identified', `Profile for ${petData.name} retrieved.`, 'success');
+              addNotification('ID Verified', `Found registry for ${petData.name}.`, 'success');
               const userPet = pets.find(p => p.id === petData.id);
               if (userPet) {
                 setSelectedPet(userPet);
@@ -314,13 +315,13 @@ const PetProfilePage: React.FC = () => {
                 navigate(`/pet/${petData.id}`);
               }
             } else {
-              addNotification('No Data', 'The scanned ID does not exist in our registry.', 'warning');
+              addNotification('Registry Missing', 'Invalid QR signature detected.', 'warning');
             }
           } catch (err) {
-            addNotification('Retrieval Failed', 'Could not verify ID.', 'error');
+            addNotification('Network Failure', 'Could not verify identity.', 'error');
           }
         } else {
-          addNotification('Scan Failed', 'No valid QR code found in the image.', 'error');
+          addNotification('Scan Interrupted', 'No valid digital signature found.', 'error');
         }
         setIsScanning(false);
       };
@@ -334,7 +335,7 @@ const PetProfilePage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Companion Registry</h2>
-          <p className="text-slate-500 font-medium text-sm">Manage profiles and wellness records for your pets.</p>
+          <p className="text-slate-500 font-medium text-sm">Manage profiles and medical intelligence for your pets.</p>
         </div>
         <div className="flex items-center gap-3">
           <input type="file" ref={qrFileInputRef} className="hidden" accept="image/*" onChange={handleFileScan} />
@@ -371,7 +372,7 @@ const PetProfilePage: React.FC = () => {
                 <CheckCircle2 size={64} />
               </div>
               <h3 className="text-3xl font-black tracking-tight">Registration Complete</h3>
-              <p className="mt-2 text-white/80 font-bold">Synchronizing with Dashboard...</p>
+              <p className="mt-2 text-white/80 font-bold">Synchronizing with Core Directory...</p>
             </div>
           )}
           <div className="flex items-center justify-between mb-8">
@@ -409,7 +410,7 @@ const PetProfilePage: React.FC = () => {
                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Birthday</label>
                 <input type="date" required value={newPet.birthday} onChange={e => setNewPet({ ...newPet, birthday: e.target.value })} className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-theme/5 font-bold" />
               </div>
-              <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all">Complete Registration</button>
+              <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all">Initialize Profile</button>
             </form>
           )}
         </div>
@@ -429,7 +430,7 @@ const PetProfilePage: React.FC = () => {
                 {isGeneratingAvatar && (
                   <div className="absolute inset-0 bg-white/40 flex flex-col items-center justify-center backdrop-blur-md z-20">
                     <Loader2 size={32} className="animate-spin text-theme mb-2" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-theme">Designing...</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-theme">Rendering AI Artwork...</span>
                   </div>
                 )}
               </div>
@@ -447,10 +448,10 @@ const PetProfilePage: React.FC = () => {
                   onClick={() => setShowStyleModal(true)} 
                   disabled={isGeneratingAvatar} 
                   className="p-3.5 rounded-xl shadow-lg transition-all bg-slate-900 text-theme hover:bg-black flex items-center gap-2" 
-                  title="Open AI Avatar Studio"
+                  title="Open AI Portrait Studio"
                 >
                   <Wand2 size={20} />
-                  {!isGeneratingAvatar && <span className="text-[10px] font-black uppercase tracking-widest pr-1">AI Studio</span>}
+                  {!isGeneratingAvatar && <span className="text-[10px] font-black uppercase tracking-widest pr-1">Portrait Studio</span>}
                 </button>
               </div>
 
@@ -461,7 +462,7 @@ const PetProfilePage: React.FC = () => {
                   onClick={() => { setShowDeleteModal(true); setDeleteConfirmation(''); }}
                   className="mt-6 flex items-center gap-2 mx-auto text-rose-400 hover:text-rose-600 font-bold text-[10px] uppercase tracking-widest transition-colors"
                 >
-                  <Trash2 size={14} /> Remove Profile
+                  <Trash2 size={14} /> Purge Registry Profile
                 </button>
               </div>
             </div>
@@ -579,29 +580,29 @@ const PetProfilePage: React.FC = () => {
       ) : (
         <div className="py-40 text-center animate-in zoom-in-95 duration-500">
           <div className="bg-slate-50 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 text-slate-200 shadow-inner"><Dog size={48} /></div>
-          <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">Companion Network Offline</h3>
-          <p className="text-slate-500 font-medium mb-10 max-w-sm mx-auto text-sm leading-relaxed">Register your first companion to unlock AI health tracking.</p>
+          <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">Registry Offline</h3>
+          <p className="text-slate-500 font-medium mb-10 max-w-sm mx-auto text-sm leading-relaxed">Register your first companion to unlock AI health tracking and digital identities.</p>
           <button onClick={() => { setStep(1); setIsAdding(true); }} className="bg-slate-900 text-white px-10 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-2xl shadow-slate-200 active:scale-95">
-            Start Registration
+            Begin Registration Cycle
           </button>
         </div>
       )}
 
-      {/* AI Avatar Style Modal */}
+      {/* AI Portrait Studio Modal */}
       {showStyleModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
           <div className="bg-white rounded-[3.5rem] w-full max-w-5xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
             <div className="p-12 border-b border-slate-50 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-6">
                 <div className="p-4 bg-theme-light text-theme rounded-[2rem] shadow-sm">
-                  <Bot size={32} />
+                  <Zap size={32} className="animate-pulse" />
                 </div>
                 <div>
                   <h3 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                    AI Portrait Studio
-                    <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full border border-emerald-100">Active</span>
+                    Elite Portrait Studio
+                    <span className="text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full border border-indigo-100">Premium Access</span>
                   </h3>
-                  <p className="text-slate-500 font-medium text-sm">Create a world-class digital identity for {selectedPet?.name}.</p>
+                  <p className="text-slate-500 font-medium text-sm">Designing a premium world-class identity for {selectedPet?.name}.</p>
                 </div>
               </div>
               <button onClick={() => setShowStyleModal(false)} className="p-4 text-slate-400 hover:bg-slate-50 rounded-2xl transition-all">
@@ -623,7 +624,7 @@ const PetProfilePage: React.FC = () => {
                     {style.isPremium && (
                       <div className="flex items-center gap-2 px-3 py-1 bg-indigo-500/10 rounded-full">
                          <Star size={12} className="text-indigo-400 fill-indigo-400" />
-                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-indigo-400">Premium Style</span>
+                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-indigo-400">Elite Model</span>
                       </div>
                     )}
                   </div>
@@ -639,11 +640,10 @@ const PetProfilePage: React.FC = () => {
                   
                   <div className="mt-auto relative z-10 flex items-center gap-3">
                     <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${style.isPremium ? 'bg-white/10 text-white group-hover:bg-white/20' : 'bg-slate-900 text-white group-hover:bg-theme'}`}>
-                      Design Now <ArrowRight size={12} />
+                      Generate Portrait <ArrowRight size={12} />
                     </div>
                   </div>
 
-                  {/* Aesthetic backgrounds for cards */}
                   <div className={`absolute -bottom-10 -right-10 w-40 h-40 rounded-full transition-all duration-1000 blur-3xl group-hover:scale-150 ${style.isPremium ? 'bg-indigo-500/20' : 'bg-theme/5 opacity-0 group-hover:opacity-100'}`}></div>
                 </button>
               ))}
@@ -651,10 +651,10 @@ const PetProfilePage: React.FC = () => {
             
             <div className="p-8 bg-white border-t border-slate-50 flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3">
-                <Sparkle size={20} className="text-theme animate-spin duration-[3000ms]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">Generated by Gemini Vision Hub 2.5</span>
+                <Sparkle size={20} className="text-theme animate-spin duration-[4000ms]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">Synchronized with Gemini Vision Hub v2.5</span>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Unlimited Generations Included</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Unlimited Registry Generations</p>
             </div>
           </div>
         </div>
@@ -669,22 +669,22 @@ const PetProfilePage: React.FC = () => {
                 <AlertTriangle size={24} />
               </div>
               <div>
-                <h3 className="text-xl font-black text-rose-900 tracking-tight">Delete Profile?</h3>
-                <p className="text-rose-700/80 font-medium text-xs">This action is permanent and cannot be undone.</p>
+                <h3 className="text-xl font-black text-rose-900 tracking-tight">Purge Registry?</h3>
+                <p className="text-rose-700/80 font-medium text-xs">This cycle is irreversible.</p>
               </div>
             </div>
             
             <div className="p-8 space-y-6">
               <p className="text-slate-600 font-medium text-sm leading-relaxed">
-                To confirm deletion of <strong>{selectedPet.name}</strong>, please type their name exactly as shown below.
+                To confirm permanent deletion of <strong>{selectedPet.name}</strong>, please type their name exactly as shown.
               </p>
               
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmation Name</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Identity Confirmation</label>
                 <input 
                   autoFocus
                   type="text" 
-                  placeholder={`Type "${selectedPet.name}" to delete`} 
+                  placeholder={`Type "${selectedPet.name}" to confirm`} 
                   value={deleteConfirmation}
                   onChange={(e) => setDeleteConfirmation(e.target.value)}
                   className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-rose-500/20 border border-slate-100 font-bold text-slate-800"
@@ -697,7 +697,7 @@ const PetProfilePage: React.FC = () => {
                   disabled={isDeleting}
                   className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
                 >
-                  Cancel
+                  Abort
                 </button>
                 <button 
                   onClick={handleDeletePet}
@@ -705,7 +705,7 @@ const PetProfilePage: React.FC = () => {
                   className="flex-1 py-4 bg-rose-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
                 >
                   {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  DELETE PROFILE
+                  PURGE PROFILE
                 </button>
               </div>
             </div>
