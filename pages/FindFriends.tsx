@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Loader2, User as UserIcon, AtSign, Users, ArrowRight } from 'lucide-react';
+import { Search, Loader2, User as UserIcon, AtSign, Users, ArrowRight, Star } from 'lucide-react';
 import { getAllUsers } from '../services/firebase';
 import { Link } from 'react-router-dom';
 import { User } from '../types';
@@ -31,8 +32,8 @@ const FindFriends: React.FC = () => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    // Filter out current user from the list
-    let userList = users.filter(u => u.uid !== currentUser?.uid);
+    // Show all users to ensure the page isn't empty for the first user
+    let userList = [...users];
 
     if (!searchText.trim()) return userList;
     const query = searchText.toLowerCase();
@@ -40,7 +41,7 @@ const FindFriends: React.FC = () => {
       u.displayName?.toLowerCase().includes(query) ||
       u.username?.toLowerCase().includes(query)
     );
-  }, [users, searchText, currentUser]);
+  }, [users, searchText]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 pb-20 animate-fade-in">
@@ -52,7 +53,7 @@ const FindFriends: React.FC = () => {
         <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm">
           <Users size={18} className="text-theme" />
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            {filteredUsers.length} {searchText.trim() ? 'Results' : 'Active Guardians'}
+            {filteredUsers.length} {searchText.trim() ? 'Results' : 'Total Guardians'}
           </span>
         </div>
       </div>
@@ -66,7 +67,6 @@ const FindFriends: React.FC = () => {
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           placeholder="Search by name or handle..."
-          aria-label="Search for pet parents by name or username"
           className="w-full bg-white border border-slate-100 rounded-[2rem] py-6 pl-16 pr-6 text-lg font-bold outline-none focus:ring-8 focus:ring-theme/5 transition-all shadow-xl shadow-slate-200/40"
         />
       </div>
@@ -89,43 +89,53 @@ const FindFriends: React.FC = () => {
             <h4 className="font-black text-slate-400 uppercase tracking-widest">No users match your criteria</h4>
           </div>
         ) : (
-          filteredUsers.map((user) => (
-            <div
-              key={user.uid}
-              className="group bg-white p-6 rounded-[2.5rem] border border-slate-50 flex items-center gap-5 transition-all hover:shadow-2xl hover:translate-y-[-4px] relative overflow-hidden"
-            >
-              <Link to={`/user/${user.username}`} className="shrink-0 relative">
-                <div className="w-16 h-16 rounded-[1.5rem] overflow-hidden bg-slate-100 border-2 border-white shadow-lg group-hover:scale-105 transition-transform duration-500">
-                  <img 
-                    src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}&background=random`} 
-                    alt={user.displayName || ''} 
-                    className="w-full h-full object-cover" 
-                  />
-                </div>
-              </Link>
-              
-              <div className="flex-1 min-w-0">
-                <Link to={`/user/${user.username}`} className="block">
-                  <h4 className="font-black text-slate-900 text-lg leading-tight truncate group-hover:text-theme transition-colors">
-                    {user.displayName}
-                  </h4>
-                  <div className="flex items-center gap-1 text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">
-                    <AtSign size={10} /> {user.username}
+          filteredUsers.map((user) => {
+            const isMe = user.uid === currentUser?.uid;
+            return (
+              <div
+                key={user.uid}
+                className={`group bg-white p-6 rounded-[2.5rem] border flex items-center gap-5 transition-all hover:shadow-2xl hover:translate-y-[-4px] relative overflow-hidden ${isMe ? 'border-theme/20 bg-theme/5' : 'border-slate-50'}`}
+              >
+                <Link to={`/user/${user.username}`} className="shrink-0 relative">
+                  <div className="w-16 h-16 rounded-[1.5rem] overflow-hidden bg-slate-100 border-2 border-white shadow-lg group-hover:scale-105 transition-transform duration-500">
+                    <img 
+                      src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}&background=random`} 
+                      alt={user.displayName || ''} 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                 </Link>
-              </div>
+                
+                <div className="flex-1 min-w-0">
+                  <Link to={`/user/${user.username}`} className="block">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-slate-900 text-lg leading-tight truncate group-hover:text-theme transition-colors">
+                        {user.displayName}
+                      </h4>
+                      {isMe && (
+                        <span className="px-2 py-0.5 bg-theme text-white text-[8px] font-black uppercase rounded-md flex items-center gap-1">
+                          <Star size={8} fill="white" /> You
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">
+                      <AtSign size={10} /> {user.username}
+                    </div>
+                  </Link>
+                </div>
 
-              <div className="shrink-0 flex items-center gap-3">
-                <FollowButton targetUserId={user.uid} />
-                <Link 
-                  to={`/user/${user.username}`}
-                  className="p-3 text-slate-300 hover:text-theme hover:bg-theme-light rounded-xl transition-all"
-                >
-                  <ArrowRight size={20} />
-                </Link>
+                <div className="shrink-0 flex items-center gap-3">
+                  {!isMe && <FollowButton targetUserId={user.uid} />}
+                  <Link 
+                    to={`/user/${user.username}`}
+                    className="p-3 text-slate-300 hover:text-theme hover:bg-theme-light rounded-xl transition-all"
+                  >
+                    <ArrowRight size={20} />
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
