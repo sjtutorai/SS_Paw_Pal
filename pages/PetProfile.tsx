@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
@@ -274,11 +273,6 @@ const PetProfilePage: React.FC = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const size = 1200; canvas.width = size; canvas.height = size + 150;
-    
-    // Construct robust public URL
-    const baseUrl = window.location.href.split('#')[0];
-    const publicUrl = `${baseUrl}#/pet/${selectedPet.id}`;
-    
     if (ctx) {
        ctx.fillStyle = "white"; ctx.fillRect(0,0, size, size + 150);
        const img = new Image(); img.crossOrigin = "anonymous";
@@ -292,7 +286,7 @@ const PetProfilePage: React.FC = () => {
          link.href = canvas.toDataURL('image/png'); link.click();
          addNotification('Identity Saved', 'Digital ID downloaded as PNG.', 'success');
        };
-       img.src = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(publicUrl)}`;
+       img.src = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(window.location.origin + '/#/pet/' + selectedPet.id)}`;
     }
   };
 
@@ -330,11 +324,7 @@ const PetProfilePage: React.FC = () => {
     } catch (err) { addNotification('AI Studio Error', 'Generation failed.', 'error'); } finally { setIsGeneratingAvatar(false); }
   };
 
-  const publicProfileUrl = useMemo(() => {
-    if (!selectedPet) return '';
-    const baseUrl = window.location.href.split('#')[0];
-    return `${baseUrl}#/pet/${selectedPet.id}`;
-  }, [selectedPet?.id]);
+  const publicProfileUrl = useMemo(() => selectedPet ? `${window.location.origin}/#/pet/${selectedPet.id}` : '', [selectedPet?.id]);
 
   return (
     <div className="space-y-10 pb-20">

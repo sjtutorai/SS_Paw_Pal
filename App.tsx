@@ -70,11 +70,6 @@ const AppContent: React.FC = () => {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        
-        {/* Public Routes */}
-        <Route path="/pet/:petId" element={<Layout><PublicPetProfile /></Layout>} />
-        
-        {/* Protected Routes */}
         <Route path={AppRoutes.HOME} element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path={AppRoutes.AI_ASSISTANT} element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
         <Route path={AppRoutes.PET_CARE} element={<ProtectedRoute><PetCare /></ProtectedRoute>} />
@@ -85,6 +80,7 @@ const AppContent: React.FC = () => {
         <Route path={AppRoutes.CHAT} element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path={AppRoutes.FIND_FRIENDS} element={<ProtectedRoute><FindFriends /></ProtectedRoute>} />
         <Route path={AppRoutes.CONTACT} element={<ProtectedRoute><Contact /></ProtectedRoute>} />
+        <Route path="/pet/:petId" element={<ProtectedRoute><PublicPetProfile /></ProtectedRoute>} />
         <Route path="/user/:username" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
         <Route path="/usernamedatastore" element={<ProtectedRoute><UsernameDataStore /></ProtectedRoute>} />
         <Route path={AppRoutes.TERMS} element={<ProtectedRoute><Terms /></ProtectedRoute>} />
