@@ -1,3 +1,4 @@
+
 {
   "name": "smart-support-for-pets",
   "private": true,
@@ -28,6 +29,9 @@
     "@types/lodash.debounce": "^4.0.6",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.3.3",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8.4.35",
+    "autoprefixer": "^10.4.18"
   }
 }

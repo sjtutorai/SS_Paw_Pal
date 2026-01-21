@@ -1,113 +1,144 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SS Paw Pal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dazlddxht/image/upload/v1768234409/SS_Paw_Pal_Logo_aceyn8.png">
-    <style>
-        :root {
-            --theme-color: #4f46e5;
-            --theme-color-hover: #4338ca;
-            --theme-color-light: #eef2ff;
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-        }
-        /* Native Preloader Styles */
-        #preloader {
-            position: fixed;
-            inset: 0;
-            background: #f8fafc;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease, visibility 0.5s;
-        }
-        #preloader.fade-out {
-            opacity: 0;
-            visibility: hidden;
-        }
-        .spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid #e2e8f0;
-            border-top-color: var(--theme-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* Modern UI Animations */
-        @keyframes fade-in {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slide-in-from-left {
-            from { transform: translateX(-20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slide-in-from-bottom {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes zoom-in {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .animate-in { animation-duration: 0.5s; animation-fill-mode: forwards; }
-        .fade-in { animation-name: fade-in; }
-        .zoom-in-95 { animation-name: zoom-in; }
-        .slide-in-from-left-2 { animation-name: slide-in-from-left; }
-        .slide-in-from-bottom-4 { animation-name: slide-in-from-bottom; }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Global Utilities */
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .bg-theme { background-color: var(--theme-color) !important; }
-        .text-theme { color: var(--theme-color) !important; }
-    </style>
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <script>
+        // Custom Theme Logic
         (function() {
             const savedTheme = localStorage.getItem('ssp_theme_color') || '#4f46e5';
             const root = document.documentElement;
             root.style.setProperty('--theme-color', savedTheme);
         })();
+
+        // Tailwind Configuration for the CDN
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        theme: 'var(--theme-color)',
+                        'theme-hover': 'var(--theme-color-hover)',
+                        'theme-light': 'var(--theme-color-light)',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
     </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "firebase/": "https://esm.sh/firebase@^12.8.0/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "jsqr": "https://esm.sh/jsqr@^1.4.0"
-  }
-}
-</script>
+
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --theme-color: #4f46e5;
+                --theme-color-hover: #4338ca;
+                --theme-color-light: #eef2ff;
+            }
+
+            body {
+                @apply font-inter bg-slate-50 text-slate-900;
+                margin: 0;
+                padding: 0;
+                overflow-x: hidden;
+                -webkit-font-smoothing: antialiased;
+            }
+        }
+
+        @layer utilities {
+            /* Native Preloader Styles */
+            #preloader {
+                position: fixed;
+                inset: 0;
+                background: #f8fafc;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                transition: opacity 0.5s ease, visibility 0.5s;
+            }
+
+            #preloader.fade-out {
+                opacity: 0;
+                visibility: hidden;
+            }
+
+            .spinner {
+                width: 48px;
+                height: 48px;
+                border: 4px solid #e2e8f0;
+                border-top-color: var(--theme-color);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+
+            /* Modern UI Animations */
+            @keyframes fade-in {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes slide-in-from-left {
+                from { transform: translateX(-20px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+
+            @keyframes slide-in-from-bottom {
+                from { transform: translateY(20px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+
+            @keyframes zoom-in {
+                from { transform: scale(0.95); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+
+            .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+            .animate-in { animation-duration: 0.5s; animation-fill-mode: forwards; }
+            .fade-in { animation-name: fade-in; }
+            .zoom-in-95 { animation-name: zoom-in; }
+            .slide-in-from-left-2 { animation-name: slide-in-from-left; }
+            .slide-in-from-bottom-4 { animation-name: slide-in-from-bottom; }
+
+            /* Custom scrollbar */
+            ::-webkit-scrollbar { width: 6px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+            ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        }
+    </style>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "firebase/": "https://esm.sh/firebase@^12.8.0/",
+        "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+        "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+        "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+        "vite": "https://esm.sh/vite@^7.3.1",
+        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+        "jsqr": "https://esm.sh/jsqr@^1.4.0"
+      }
+    }
+    </script>
 </head>
 <body>
     <div id="preloader">
