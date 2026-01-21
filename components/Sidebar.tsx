@@ -1,5 +1,4 @@
-import React from 'react';
-// Fix: Re-importing react-router-dom members using single quotes to resolve module issues
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   PlusSquare, 
@@ -15,7 +14,8 @@ import {
   Search,
   LayoutDashboard,
   Settings,
-  Mail
+  Mail,
+  Menu
 } from 'lucide-react';
 import { AppRoutes } from '../types';
 import { logout } from '../services/firebase';
@@ -32,34 +32,48 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Handle window resize to auto-close/adjust logic if needed
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile && isOpen) {
+        setIsOpen(false); // Reset mobile open state when switching to desktop
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen, setIsOpen]);
 
   const menuGroups = [
     {
-      title: "Navigation",
+      title: "Main",
       items: [
         { label: 'Overview', path: AppRoutes.HOME, icon: LayoutDashboard },
         { label: 'AI Specialist', path: AppRoutes.AI_ASSISTANT, icon: Sparkles },
       ]
     },
     {
-      title: "Social Hub",
+      title: "Social",
       items: [
         { label: 'Community', path: AppRoutes.CREATE_POST, icon: PlusSquare },
         { label: 'Messages', path: AppRoutes.CHAT, icon: Send },
-        { label: 'Discovery', path: AppRoutes.FIND_FRIENDS, icon: Search },
+        { label: 'Find Friends', path: AppRoutes.FIND_FRIENDS, icon: Search },
       ]
     },
     {
-      title: "Guardian Tools",
+      title: "Pet Care",
       items: [
-        { label: 'Wellness Hub', path: AppRoutes.PET_CARE, icon: Stethoscope },
+        { label: 'Wellness', path: AppRoutes.PET_CARE, icon: Stethoscope },
         { label: 'Registry', path: AppRoutes.PET_PROFILE, icon: Dog },
       ]
     },
     {
-      title: "Support & Legal",
+      title: "System",
       items: [
-        { label: 'Contact', path: AppRoutes.CONTACT, icon: Mail },
+        { label: 'Contact Support', path: AppRoutes.CONTACT, icon: Mail },
         { label: 'Settings', path: AppRoutes.SETTINGS, icon: Settings },
       ]
     }
@@ -78,55 +92,53 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
+      {/* Mobile Backdrop - Glassmorphism */}
       <div 
-        className={`fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] transition-opacity duration-500 md:hidden ${
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] transition-opacity duration-300 md:hidden ${
           isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
         }`}
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Slide Navigation Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-[70] 
-        bg-white border-r border-slate-100
-        transition-all duration-500 cubic-bezier(0.19, 1, 0.22, 1)
-        md:relative md:translate-x-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        ${isCollapsed ? 'md:w-[88px]' : 'lg:w-[300px] md:w-[260px]'}
-        flex flex-col shadow-2xl md:shadow-none overflow-hidden
-      `}>
-        
-        {/* Sidebar Header branding */}
-        <div className="h-24 flex items-center px-6 shrink-0 border-b border-slate-50 relative">
-          <Link to={AppRoutes.HOME} className="flex items-center gap-4 group w-full">
-            <div className="w-12 h-12 bg-white border border-slate-100 rounded-2xl p-2.5 flex items-center justify-center shrink-0 shadow-lg group-hover:rotate-6 transition-all duration-500">
-              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
+      {/* Sidebar Container */}
+      <aside 
+        className={`
+          fixed inset-y-0 left-0 z-[70] 
+          bg-white border-r border-slate-100
+          transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]
+          md:relative
+          flex flex-col
+          ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0 md:shadow-none'}
+          ${isCollapsed ? 'md:w-[88px]' : 'md:w-[280px]'}
+        `}
+      >
+        {/* Header / Brand */}
+        <div className="h-24 flex items-center px-6 shrink-0 relative">
+          <Link to={AppRoutes.HOME} className="flex items-center gap-4 group w-full overflow-hidden">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform duration-300">
+               <img src={LOGO_URL} alt="Logo" className="w-6 h-6 object-contain brightness-0 invert" />
             </div>
-            {!isCollapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="text-[16px] font-black text-slate-900 tracking-tighter leading-none truncate">SS Paw Pal</span>
-                <span className="text-[9px] font-black text-theme uppercase tracking-widest mt-1 truncate">Guardian Network</span>
-              </div>
-            )}
+            <div className={`flex flex-col min-w-0 transition-opacity duration-300 ${isCollapsed ? 'md:opacity-0 md:w-0' : 'opacity-100'}`}>
+              <span className="text-lg font-black text-slate-900 tracking-tight leading-none whitespace-nowrap">SS Paw Pal</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Care Portal</span>
+            </div>
           </Link>
+          
           <button 
             onClick={() => setIsOpen(false)} 
-            className="md:hidden ml-auto p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-colors"
+            className="md:hidden absolute right-4 p-2 text-slate-400 hover:bg-slate-50 rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Navigation Area */}
-        <nav className="flex-1 px-4 py-8 space-y-10 overflow-y-auto custom-scrollbar overflow-x-hidden">
-          {menuGroups.map((group, gIdx) => (
-            <div key={gIdx} className="space-y-3">
-              {!isCollapsed && (
-                <h3 className="px-5 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 opacity-60">
-                  {group.title}
-                </h3>
-              )}
+        {/* Scrollable Nav */}
+        <nav className="flex-1 px-4 py-4 space-y-8 overflow-y-auto custom-scrollbar overflow-x-hidden">
+          {menuGroups.map((group, idx) => (
+            <div key={idx} className="space-y-2">
+              <h3 className={`px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 transition-opacity duration-300 ${isCollapsed ? 'md:opacity-0 hidden md:block' : 'opacity-100'}`}>
+                {group.title}
+              </h3>
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const isActive = location.pathname === item.path;
@@ -134,31 +146,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
                     <Link
                       key={item.path}
                       to={item.path}
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => setIsOpen(false)} // Close on mobile click
                       className={`
-                        group relative flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300
+                        group relative flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200
                         ${isActive 
-                          ? 'bg-slate-900 text-white shadow-xl' 
+                          ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
                           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
-                        active:scale-[0.97]
                         ${isCollapsed ? 'justify-center' : ''}
                       `}
                     >
-                      <item.icon size={20} className={`shrink-0 transition-transform duration-500 group-hover:scale-110 ${isActive ? 'text-indigo-400' : ''}`} />
+                      <item.icon 
+                        size={20} 
+                        strokeWidth={isActive ? 2.5 : 2}
+                        className={`shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} 
+                      />
                       
-                      {!isCollapsed && (
-                        <span className="text-[13px] font-bold tracking-tight whitespace-nowrap">{item.label}</span>
-                      )}
+                      <span className={`text-[13px] font-bold tracking-tight whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'md:opacity-0 md:w-0 md:hidden' : 'opacity-100'}`}>
+                        {item.label}
+                      </span>
                       
+                      {/* Active Indicator Dot (only when expanded) */}
                       {isActive && !isCollapsed && (
-                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse" />
                       )}
-                      
-                      {/* Tooltip for Collapsed Sidebar */}
+
+                      {/* Tooltip for Collapsed State */}
                       {isCollapsed && (
-                        <div className="absolute left-[calc(100%+16px)] px-3 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 translate-x-[-12px] pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all z-[100] whitespace-nowrap shadow-2xl">
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] whitespace-nowrap shadow-xl">
                           {item.label}
-                          <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+                          <div className="absolute top-1/2 right-full -translate-y-1/2 -mr-1 border-4 border-transparent border-r-slate-800" />
                         </div>
                       )}
                     </Link>
@@ -169,46 +185,57 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, isCollapsed, setIs
           ))}
         </nav>
 
-        {/* User Hub Footer */}
-        <div className="p-4 border-t border-slate-50 space-y-2 bg-white">
-          {!isCollapsed && (
-            <Link to={AppRoutes.SETTINGS} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-all group">
-              <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
-                ) : (
-                  <UserIcon size={18} className="m-2.5 text-slate-300" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12px] font-black text-slate-900 truncate tracking-tight">@{user?.displayName?.split(' ')[0] || 'User'}</p>
-                <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] truncate">Active Guardian</p>
-              </div>
-            </Link>
-          )}
-          
+        {/* Footer / User Profile */}
+        <div className="p-4 border-t border-slate-100 bg-white space-y-2">
+          <Link 
+            to={AppRoutes.SETTINGS}
+            className={`
+              flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-all group
+              ${isCollapsed ? 'justify-center' : ''}
+            `}
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-100 shrink-0 overflow-hidden border border-slate-200 group-hover:border-indigo-200 transition-colors">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                  <UserIcon size={18} />
+                </div>
+              )}
+            </div>
+            
+            <div className={`min-w-0 transition-opacity duration-300 ${isCollapsed ? 'md:opacity-0 md:w-0 md:hidden' : 'opacity-100'}`}>
+              <p className="text-sm font-black text-slate-800 truncate leading-tight">
+                {user?.displayName?.split(' ')[0] || 'User'}
+              </p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                View Profile
+              </p>
+            </div>
+          </Link>
+
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-slate-400 hover:text-rose-500 hover:bg-rose-50 group ${isCollapsed ? 'justify-center' : ''}`}
+            className={`
+              w-full flex items-center gap-3 p-3 rounded-2xl transition-all 
+              text-slate-400 hover:bg-rose-50 hover:text-rose-600
+              ${isCollapsed ? 'justify-center' : ''}
+            `}
+            title={isCollapsed ? "Sign Out" : ""}
           >
-            <LogOut size={20} className="shrink-0 transition-transform group-hover:translate-x-1" />
-            {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.3em]">Sign Out</span>}
-            
-            {isCollapsed && (
-              <div className="absolute left-[calc(100%+16px)] px-3 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 translate-x-[-12px] pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all z-[100] whitespace-nowrap shadow-2xl">
-                Sign Out
-                <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-rose-500 rotate-45" />
-              </div>
-            )}
+            <LogOut size={20} />
+            <span className={`text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'md:opacity-0 md:w-0 md:hidden' : 'opacity-100'}`}>
+              Sign Out
+            </span>
           </button>
         </div>
 
-        {/* Desktop Sidebar Toggle */}
+        {/* Desktop Collapse Toggle */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex absolute -right-4 top-24 w-8 h-8 bg-white border border-slate-100 rounded-full items-center justify-center text-slate-400 hover:text-slate-900 shadow-xl transition-all z-[80] hover:scale-110 active:scale-90"
+          className="hidden md:flex absolute -right-3 top-28 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-md transition-all z-50 hover:scale-110 active:scale-95"
         >
-          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </aside>
     </>
