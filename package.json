@@ -1,3 +1,4 @@
+
 {
   "name": "smart-support-for-pets",
   "private": true,
@@ -24,7 +25,8 @@
     "jsqr": "^1.4.0",
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "react-markdown": "^10.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
