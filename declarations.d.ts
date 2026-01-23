@@ -1,4 +1,3 @@
-
 declare module 'jsqr' {
   interface QRCode {
     binaryData: number[];
@@ -31,16 +30,4 @@ declare module 'jsqr' {
     height: number,
     providedOptions?: Options
   ): QRCode | null;
-}
-
-declare module 'react-markdown' {
-  import { FC, ReactNode } from 'react';
-  interface ReactMarkdownProps {
-    children?: string | null;
-    className?: string;
-    components?: any;
-    [key: string]: any;
-  }
-  const ReactMarkdown: FC<ReactMarkdownProps>;
-  export default ReactMarkdown;
 }
